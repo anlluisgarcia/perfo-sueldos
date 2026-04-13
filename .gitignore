@@ -1,0 +1,8 @@
+node_modules/
+uploads/
+data/
+*.sql
+*.zip
+.env
+.DS_Store
+npm-debug.log*

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recibos de Sueldos</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Sacramento&family=Pacifico&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- PANTALLA DE LOGIN -->
+  <div id="login-screen" class="screen active">
+    <div class="login-container">
+      <div class="login-header">
+        <div class="logo">RS</div>
+        <h1>Recibos de Sueldos</h1>
+        <p>Sistema de Gesti&oacute;n de Recibos</p>
+      </div>
+
+      <div class="login-tabs">
+        <button class="tab-btn active" onclick="switchLoginTab('empleado')">Empleado</button>
+        <button class="tab-btn" onclick="switchLoginTab('admin')">Administrador</button>
+      </div>
+
+      <!-- Login Empleado -->
+      <form id="form-login-empleado" class="login-form" onsubmit="loginEmpleado(event)">
+        <p class="form-hint">Ingrese con su n&uacute;mero de documento y clave asignada</p>
+        <div class="form-group">
+          <label>N&uacute;mero de DNI</label>
+          <input type="text" id="emp-dni" placeholder="Ej: 12345678" required maxlength="8">
+        </div>
+        <div class="form-group">
+          <label>Clave</label>
+          <input type="password" id="emp-clave" placeholder="Ingrese su clave" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Ingresar como Empleado</button>
+        <div id="error-empleado" class="error-msg"></div>
+      </form>
+
+      <!-- Login Admin -->
+      <form id="form-login-admin" class="login-form hidden" onsubmit="loginAdmin(event)">
+        <p class="form-hint">Acceso exclusivo para administradores</p>
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="admin-usuario" placeholder="Usuario administrador" required>
+        </div>
+        <div class="form-group">
+          <label>Contrase&ntilde;a</label>
+          <input type="password" id="admin-clave" placeholder="Contrase&ntilde;a" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Ingresar como Administrador</button>
+        <div id="error-admin" class="error-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PANEL ADMIN -->
+  <div id="admin-screen" class="screen">
+    <nav class="navbar">
+      <div class="nav-brand">
+        <span class="logo-sm">RS</span>
+        <span>Panel de Administraci&oacute;n</span>
+      </div>
+      <div class="nav-user">
+        <span id="admin-nombre"></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Cerrar Sesi&oacute;n</button>
+      </div>
+    </nav>
+
+    <div class="admin-content">
+      <!-- Stats -->
+      <div class="stats-row" id="stats-row"></div>
+
+      <!-- Tabs -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchAdminTab('empleados')">Empleados</button>
+        <button class="admin-tab" onclick="switchAdminTab('firmas')">Firmas</button>
+        <button class="admin-tab" onclick="switchAdminTab('recibos')">Subir Recibos</button>
+        <button class="admin-tab" onclick="switchAdminTab('historial')">Historial Recibos</button>
+        <button class="admin-tab" onclick="switchAdminTab('usuarios')">Alta Usuario</button>
+      </div>
+
+      <!-- Tab: Empleados -->
+      <div id="tab-empleados" class="tab-content active">
+        <div class="section-header">
+          <h2>Gesti&oacute;n de Empleados</h2>
+          <button class="btn btn-primary" onclick="mostrarFormEmpleado()">+ Nuevo Empleado</button>
+        </div>
+
+        <!-- Formulario Empleado -->
+        <div id="form-empleado-container" class="card hidden">
+          <h3 id="form-empleado-titulo">Nuevo Empleado</h3>
+          <form id="form-empleado" onsubmit="guardarEmpleado(event)">
+            <input type="hidden" id="emp-edit-id">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nombre Completo *</label>
+                <input type="text" id="emp-nombre">
+              </div>
+              <div class="form-group">
+                <label>DNI *</label>
+                <input type="text" id="emp-dni-form" maxlength="8">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Clave (d&iacute;gitos) *</label>
+                <input type="text" id="emp-clave-form" placeholder="Clave num&eacute;rica">
+              </div>
+              <div class="form-group">
+                <label>Tel&eacute;fono</label>
+                <input type="text" id="emp-telefono">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Direcci&oacute;n</label>
+                <input type="text" id="emp-direccion">
+              </div>
+              <div class="form-group">
+                <label>Empresa</label>
+                <select id="emp-empresa">
+                  <option value="">Seleccionar empresa...</option>
+                  <option value="BTZ MINERA">BTZ MINERA</option>
+                  <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Estado</label>
+                <select id="emp-estado">
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+              <div class="form-group"></div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Guardar</button>
+              <button type="button" class="btn btn-outline" onclick="cancelarFormEmpleado()">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tabla Empleados -->
+        <div class="card">
+          <div class="table-search" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="buscar-empleado" placeholder="Buscar por nombre o DNI..." oninput="filtrarEmpleados()">
+            <select id="filtro-empresa" onchange="filtrarEmpleados()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
+              <option value="">Todas las empresas</option>
+              <option value="BTZ MINERA">BTZ MINERA</option>
+              <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+            </select>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>DNI</th>
+                  <th>Empresa</th>
+                  <th>Tel&eacute;fono</th>
+                  <th>Direcci&oacute;n</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-empleados"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Firma -->
+      <div id="tab-firmas" class="tab-content">
+        <div class="card">
+          <h2>Firma Administrativa</h2>
+          <p class="firma-descripcion">Esta firma se estampar&aacute; autom&aacute;ticamente en todos los recibos de sueldo al momento de subirlos.</p>
+
+          <!-- Vista previa firma actual -->
+          <div id="firma-admin-actual-container" class="firma-preview-box hidden">
+            <h4>Firma actual</h4>
+            <div class="firma-preview">
+              <img id="firma-admin-actual-img" src="" alt="Firma actual">
+            </div>
+            <p class="firma-fecha-guardada" id="firma-admin-fecha-texto"></p>
+            <div style="margin-top:12px;display:flex;gap:10px">
+              <button class="btn btn-danger btn-sm" onclick="confirmarEliminarFirmaAdmin()">Eliminar Firma</button>
+            </div>
+          </div>
+
+          <div id="firma-admin-sin-firma" class="info-box hidden">
+            <strong>Sin firma configurada.</strong> Los recibos se subir&aacute;n sin firma hasta que cargue una.
+          </div>
+
+          <!-- Sub-tabs de firma -->
+          <div class="firma-subtabs" style="margin-top:24px">
+            <button class="firma-subtab active" onclick="switchFirmaAdminSubtab('dibujar')">Firma Dibujada</button>
+            <button class="firma-subtab" onclick="switchFirmaAdminSubtab('escribir')">Firma Escrita</button>
+          </div>
+
+          <!-- Sub-tab: Dibujar -->
+          <div id="firma-admin-sub-dibujar" class="firma-sub-content active">
+            <div class="firma-editor">
+              <h4>Dibuje la firma</h4>
+              <div class="firma-canvas-wrapper">
+                <canvas id="firma-admin-canvas" width="560" height="200"></canvas>
+                <div class="firma-canvas-placeholder" id="firma-admin-placeholder">Dibuje aqu&iacute; la firma con el mouse o dedo</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarFirmaAdminCanvas()">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarFirmaAdminDibujada()">Guardar Firma</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: Escribir -->
+          <div id="firma-admin-sub-escribir" class="firma-sub-content">
+            <div class="firma-editor">
+              <h4>Escriba la firma</h4>
+              <input type="text" id="firma-admin-escrita-input" placeholder="Escriba nombre y apellido..." oninput="previsualizarFirmaAdminEscrita()" maxlength="40">
+              <div class="firma-escrita-fuentes" style="margin-top:12px">
+                <label class="firma-fuente-opcion active" onclick="seleccionarFuenteFirmaAdmin('Dancing Script')">
+                  <input type="radio" name="firma-admin-fuente" value="Dancing Script" checked hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Dancing Script',cursive">Firma ejemplo</span>
+                </label>
+                <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirmaAdmin('Great Vibes')">
+                  <input type="radio" name="firma-admin-fuente" value="Great Vibes" hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Great Vibes',cursive">Firma ejemplo</span>
+                </label>
+                <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirmaAdmin('Sacramento')">
+                  <input type="radio" name="firma-admin-fuente" value="Sacramento" hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Sacramento',cursive">Firma ejemplo</span>
+                </label>
+                <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirmaAdmin('Pacifico')">
+                  <input type="radio" name="firma-admin-fuente" value="Pacifico" hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Pacifico',cursive">Firma ejemplo</span>
+                </label>
+              </div>
+              <div class="firma-canvas-wrapper" style="margin-top:12px">
+                <canvas id="firma-admin-escrita-canvas" width="560" height="200"></canvas>
+                <div class="firma-canvas-placeholder" id="firma-admin-escrita-placeholder">La vista previa aparecer&aacute; aqu&iacute;</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarFirmaAdminEscrita()">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarFirmaAdminEscrita()">Guardar Firma</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Subir Recibos -->
+      <div id="tab-recibos" class="tab-content">
+        <div class="card">
+          <h2>Subir Recibos de Sueldos</h2>
+
+          <div class="upload-mode-tabs">
+            <button class="upload-tab active" onclick="switchUploadMode('individual')">Individual</button>
+            <button class="upload-tab" onclick="switchUploadMode('masivo')">Masivo por DNI</button>
+          </div>
+
+          <!-- Upload Individual -->
+          <form id="form-upload-individual" onsubmit="subirReciboIndividual(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Empresa</label>
+                <select id="recibo-filtro-empresa" onchange="filtrarSelectEmpleados()">
+                  <option value="">Todas las empresas</option>
+                  <option value="BTZ MINERA">BTZ MINERA</option>
+                  <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Empleado *</label>
+                <select id="recibo-empleado" required>
+                  <option value="">Seleccione un empleado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fecha del Recibo *</label>
+                <input type="month" id="recibo-fecha" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Descripci&oacute;n (opcional)</label>
+              <input type="text" id="recibo-descripcion" placeholder="Ej: Sueldo Marzo 2024">
+            </div>
+            <div class="form-group">
+              <label>Archivos PDF *</label>
+              <div class="upload-area" id="upload-area-ind">
+                <input type="file" id="recibo-archivos" accept=".pdf" multiple>
+                <div class="upload-placeholder">
+                  <span class="upload-icon">&#128196;</span>
+                  <p>Haga clic o arrastre archivos PDF aqu&iacute;</p>
+                  <p class="upload-hint">M&aacute;ximo 10MB por archivo</p>
+                </div>
+                <div id="archivos-seleccionados" class="archivos-lista"></div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Subir Recibos</button>
+          </form>
+
+          <!-- Upload Masivo -->
+          <form id="form-upload-masivo" class="hidden" onsubmit="subirReciboMasivo(event)">
+            <div class="info-box">
+              <strong>Modo Masivo:</strong> Los archivos PDF deben contener el n&uacute;mero de DNI del empleado en su nombre.
+              <br>Ejemplo: <code>recibo_12345678_marzo.pdf</code> se asignar&aacute; al empleado con DNI 12345678.
+            </div>
+            <div class="form-group">
+              <label>Fecha del Recibo *</label>
+              <input type="month" id="recibo-fecha-masivo" required>
+            </div>
+            <div class="form-group">
+              <label>Descripci&oacute;n (opcional)</label>
+              <input type="text" id="recibo-descripcion-masivo" placeholder="Ej: Sueldos Marzo 2024">
+            </div>
+            <div class="form-group">
+              <label>Archivos PDF *</label>
+              <div class="upload-area">
+                <input type="file" id="recibo-archivos-masivo" accept=".pdf" multiple>
+                <div class="upload-placeholder">
+                  <span class="upload-icon">&#128196;</span>
+                  <p>Haga clic o arrastre m&uacute;ltiples archivos PDF</p>
+                  <p class="upload-hint">El nombre debe contener el DNI del empleado</p>
+                </div>
+                <div id="archivos-seleccionados-masivo" class="archivos-lista"></div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Subir Recibos Masivamente</button>
+          </form>
+
+          <div id="upload-resultado" class="hidden"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Historial -->
+      <div id="tab-historial" class="tab-content">
+        <div class="card">
+          <h2>Historial de Recibos</h2>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+            <input type="text" id="buscar-empleado-historial" placeholder="Buscar por nombre o DNI..." oninput="filtrarHistorialRecibos()" style="flex:1;max-width:350px">
+            <select id="filtro-empresa-historial" onchange="filtrarHistorialRecibos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
+              <option value="">Todas las empresas</option>
+              <option value="BTZ MINERA">BTZ MINERA</option>
+              <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+            </select>
+            <input type="month" id="filtro-fecha-historial" onchange="filtrarHistorialRecibos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
+            <button class="btn btn-outline btn-sm" onclick="limpiarFiltroHistorial()">Limpiar filtros</button>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empleado</th>
+                  <th>DNI</th>
+                  <th>Fecha Recibo</th>
+                  <th>Archivo</th>
+                  <th>Descripci&oacute;n</th>
+                  <th>Firma</th>
+                  <th>Descarga</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-recibos-historial"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Alta Usuario -->
+      <div id="tab-usuarios" class="tab-content">
+        <div class="section-header">
+          <h2>Alta de Usuarios</h2>
+          <button class="btn btn-primary" onclick="mostrarFormUsuario()">+ Nuevo Usuario</button>
+        </div>
+
+        <!-- Formulario Usuario -->
+        <div id="form-usuario-container" class="card hidden">
+          <h3 id="form-usuario-titulo">Nuevo Usuario</h3>
+          <form id="form-usuario" onsubmit="guardarUsuario(event)">
+            <input type="hidden" id="usr-edit-id">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nombre Completo *</label>
+                <input type="text" id="usr-nombre" required>
+              </div>
+              <div class="form-group">
+                <label>Usuario *</label>
+                <input type="text" id="usr-usuario" required placeholder="Nombre de usuario para login">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Contrase&ntilde;a *</label>
+                <input type="password" id="usr-clave" placeholder="Contrase&ntilde;a">
+              </div>
+              <div class="form-group">
+                <label>Estado</label>
+                <select id="usr-estado">
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Permiso</label>
+                <select id="usr-permiso">
+                  <option value="administrativo">Administrativo</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="operador">Operador</option>
+                </select>
+              </div>
+              <div class="form-group"></div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Guardar</button>
+              <button type="button" class="btn btn-outline" onclick="cancelarFormUsuario()">Cancelar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tabla Usuarios -->
+        <div class="card">
+          <div class="table-search">
+            <input type="text" id="buscar-usuario" placeholder="Buscar por nombre o usuario..." oninput="filtrarUsuarios()">
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Usuario</th>
+                  <th>Estado</th>
+                  <th>Permiso</th>
+                  <th>Fecha Creaci&oacute;n</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-usuarios"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTAL EMPLEADO -->
+  <div id="empleado-screen" class="screen">
+    <nav class="navbar navbar-emp">
+      <div class="nav-brand">
+        <span class="logo-sm">RS</span>
+        <span>Portal del Empleado</span>
+      </div>
+      <div class="nav-user">
+        <span id="empleado-nombre"></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Cerrar Sesi&oacute;n</button>
+      </div>
+    </nav>
+
+    <div class="empleado-content">
+      <!-- Tabs empleado -->
+      <div class="emp-tabs">
+        <button class="emp-tab active" onclick="switchEmpTab('recibos')">Mis Recibos</button>
+        <button class="emp-tab" onclick="switchEmpTab('firma')">Mi Firma</button>
+      </div>
+
+      <!-- Tab: Mis Recibos -->
+      <div id="emp-tab-recibos" class="emp-tab-content active">
+        <div class="card">
+          <div class="perfil-header">
+            <h2>Mis Recibos de Sueldo</h2>
+          </div>
+          <div id="empleado-sin-recibos" class="empty-state hidden">
+            <span class="empty-icon">&#128203;</span>
+            <p>A&uacute;n no tiene recibos cargados</p>
+          </div>
+          <div class="recibos-grid" id="recibos-empleado"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Mi Firma -->
+      <div id="emp-tab-firma" class="emp-tab-content">
+        <div class="card">
+          <h2>Mi Firma Digital</h2>
+          <p class="firma-descripcion">Cree o edite su firma digital. Esta firma se utilizar&aacute; para confirmar la recepci&oacute;n de sus recibos de sueldo.</p>
+
+          <!-- Sub-tabs de firma -->
+          <div class="firma-subtabs">
+            <button class="firma-subtab active" onclick="switchFirmaSubtab('dibujar')">Firma Dibujada</button>
+            <button class="firma-subtab" onclick="switchFirmaSubtab('escrita')">Mi Firma Escrita</button>
+          </div>
+
+          <!-- Vista previa firma actual -->
+          <div id="firma-actual-container" class="firma-preview-box hidden">
+            <h4>Firma actual</h4>
+            <div class="firma-preview">
+              <img id="firma-actual-img" src="" alt="Firma actual">
+            </div>
+            <p class="firma-fecha-guardada" id="firma-fecha-texto"></p>
+          </div>
+
+          <!-- Sub-tab: Firma Dibujada -->
+          <div id="firma-sub-dibujar" class="firma-sub-content active">
+            <div class="firma-editor">
+              <h4 id="firma-editor-titulo">Dibuje su firma</h4>
+              <div class="firma-canvas-wrapper">
+                <canvas id="firma-canvas" width="560" height="200"></canvas>
+                <div class="firma-canvas-placeholder" id="firma-placeholder">Dibuje aqu&iacute; su firma con el mouse o dedo</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarFirmaEditor()">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarMiFirma()">Guardar Firma</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: Firma Escrita -->
+          <div id="firma-sub-escrita" class="firma-sub-content">
+            <div class="firma-editor">
+              <h4>Escriba su firma</h4>
+              <input type="text" id="firma-escrita-input" placeholder="Escriba su nombre y apellido..." oninput="previsualizarFirmaEscrita()" maxlength="40">
+              <div class="firma-escrita-fuentes">
+                <label class="firma-fuente-opcion active" onclick="seleccionarFuenteFirma('Dancing Script')">
+                  <input type="radio" name="firma-fuente" value="Dancing Script" checked hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Dancing Script',cursive">Firma ejemplo</span>
+                </label>
+                <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirma('Great Vibes')">
+                  <input type="radio" name="firma-fuente" value="Great Vibes" hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Great Vibes',cursive">Firma ejemplo</span>
+                </label>
+                <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirma('Sacramento')">
+                  <input type="radio" name="firma-fuente" value="Sacramento" hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Sacramento',cursive">Firma ejemplo</span>
+                </label>
+                <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirma('Pacifico')">
+                  <input type="radio" name="firma-fuente" value="Pacifico" hidden>
+                  <span class="firma-fuente-preview" style="font-family:'Pacifico',cursive">Firma ejemplo</span>
+                </label>
+              </div>
+              <div class="firma-canvas-wrapper">
+                <canvas id="firma-escrita-canvas" width="560" height="200"></canvas>
+                <div class="firma-canvas-placeholder" id="firma-escrita-placeholder">La vista previa de su firma aparecer&aacute; aqu&iacute;</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarFirmaEscrita()">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarFirmaEscrita()">Guardar Firma</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMACIÓN -->
+  <div id="modal-confirm" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modal-titulo">Confirmar</h3>
+      <p id="modal-mensaje"></p>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="modal-confirmar">Confirmar</button>
+        <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FIRMAR RECIBO -->
+  <div id="modal-firma" class="modal hidden">
+    <div class="modal-content modal-firma-content">
+      <h3>Firmar Recibo de Sueldo</h3>
+      <p>Al confirmar, su firma digital quedar&aacute; registrada en este recibo como constancia de recepci&oacute;n. Esta acci&oacute;n se realiza por &uacute;nica vez.</p>
+      <div class="firma-preview-modal">
+        <img id="firma-modal-img" src="" alt="Mi firma">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="confirmarFirmaRecibo()">Firmar y Descargar PDF</button>
+        <button class="btn btn-outline" onclick="cerrarModalFirma()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
