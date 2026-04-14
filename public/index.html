@@ -200,6 +200,7 @@
           <div class="firma-subtabs" style="margin-top:24px">
             <button class="firma-subtab active" onclick="switchFirmaAdminSubtab('dibujar')">Firma Dibujada</button>
             <button class="firma-subtab" onclick="switchFirmaAdminSubtab('escribir')">Firma Escrita</button>
+            <button class="firma-subtab" onclick="switchFirmaAdminSubtab('cargar')">Cargar Firma</button>
           </div>
 
           <!-- Sub-tab: Dibujar -->
@@ -247,6 +248,23 @@
               <div class="firma-editor-actions">
                 <button class="btn btn-outline btn-sm" onclick="limpiarFirmaAdminEscrita()">Limpiar</button>
                 <button class="btn btn-primary" onclick="guardarFirmaAdminEscrita()">Guardar Firma</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: Cargar Firma -->
+          <div id="firma-admin-sub-cargar" class="firma-sub-content">
+            <div class="firma-editor">
+              <h4>Cargar imagen de firma</h4>
+              <p class="firma-descripcion">Seleccione un archivo JPG o PNG con la firma. Tama&ntilde;o m&aacute;ximo 2MB.</p>
+              <input type="file" id="firma-admin-cargar-input" accept="image/png,image/jpeg" onchange="previsualizarFirmaAdminCargada(event)">
+              <div class="firma-canvas-wrapper" style="margin-top:12px">
+                <img id="firma-admin-cargar-preview" style="max-width:100%;max-height:200px;display:none">
+                <div class="firma-canvas-placeholder" id="firma-admin-cargar-placeholder">La vista previa aparecer&aacute; aqu&iacute;</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarFirmaAdminCargada()">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarFirmaAdminCargada()">Guardar Firma</button>
               </div>
             </div>
           </div>

@@ -629,6 +629,52 @@ async function guardarFirmaAdminEscrita() {
   await enviarFirmaAdmin(firmaData);
 }
 
+// --- Cargar firma desde archivo ---
+let firmaAdminCargadaDataUrl = null;
+
+function previsualizarFirmaAdminCargada(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!['image/png', 'image/jpeg'].includes(file.type)) {
+    showToast('Solo se permiten archivos JPG o PNG', 'error');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('El archivo no debe superar los 2MB', 'error');
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    firmaAdminCargadaDataUrl = e.target.result;
+    const img = document.getElementById('firma-admin-cargar-preview');
+    img.src = firmaAdminCargadaDataUrl;
+    img.style.display = '';
+    document.getElementById('firma-admin-cargar-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function limpiarFirmaAdminCargada() {
+  firmaAdminCargadaDataUrl = null;
+  const input = document.getElementById('firma-admin-cargar-input');
+  if (input) input.value = '';
+  const img = document.getElementById('firma-admin-cargar-preview');
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  const ph = document.getElementById('firma-admin-cargar-placeholder');
+  if (ph) ph.style.display = '';
+}
+
+async function guardarFirmaAdminCargada() {
+  if (!firmaAdminCargadaDataUrl) {
+    showToast('Debe seleccionar un archivo JPG o PNG', 'error');
+    return;
+  }
+  await enviarFirmaAdmin(firmaAdminCargadaDataUrl);
+  limpiarFirmaAdminCargada();
+}
+
 // --- Enviar firma al servidor ---
 async function enviarFirmaAdmin(firmaData) {
   try {
