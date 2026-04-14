@@ -517,12 +517,8 @@ app.get('/api/recibo/descargar/:id', async (req, res) => {
           const empEmpresaResult = await db.exec('SELECT empresa FROM empleados WHERE id = ?', [decoded.id]);
           const empEmpresa = (empEmpresaResult.length > 0 && empEmpresaResult[0].values.length > 0) ? empEmpresaResult[0].values[0][0] : '';
 
-          let firmaEmpleadoX = 25;
-          let firmaEmpleadoY = 171;
-          if (empEmpresa && empEmpresa.toUpperCase().includes('PERFORACIONES IGLESIANAS')) {
-            firmaEmpleadoX = 25 + 227;
-            firmaEmpleadoY = 171 - 142;
-          }
+          let firmaEmpleadoX = 25 + 227;
+          let firmaEmpleadoY = 171 - 142;
 
           const pages = pdfDoc.getPages();
           const lastPage = pages[pages.length - 1];
@@ -698,12 +694,8 @@ app.get('/api/admin/recibo-firmado/:id', async (req, res) => {
     );
     const empEmpresaAdmin = (empInfoResult.length > 0 && empInfoResult[0].values.length > 0) ? empInfoResult[0].values[0][0] : '';
 
-    let firmaEmpX = 25;
-    let firmaEmpY = 171;
-    if (empEmpresaAdmin && empEmpresaAdmin.toUpperCase().includes('PERFORACIONES IGLESIANAS')) {
-      firmaEmpX = 25 + 227;
-      firmaEmpY = 171 - 142;
-    }
+    let firmaEmpX = 25 + 227;
+    let firmaEmpY = 171 - 142;
 
     for (const page of pages) {
       page.drawImage(firmaImage, {
