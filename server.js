@@ -234,12 +234,8 @@ async function estamparFirmaAdmin(filePath, empresa) {
   const lastPage = pages[pages.length - 1];
   const { width } = lastPage.getSize();
   console.log('Empresa recibida para estampar firma:', JSON.stringify(empresa));
-  let firmaX = width - firmaWidth - 239;
-  let firmaY = 200;
-  if (empresa && empresa.toUpperCase().includes('PERFORACIONES IGLESIANAS')) {
-    firmaX = firmaX + 227;
-    firmaY = firmaY - 170;
-  }
+  let firmaX = width - firmaWidth - 239 + 227;
+  let firmaY = 200 - 170;
   lastPage.drawImage(firmaImage, {
     x: firmaX,
     y: firmaY,
