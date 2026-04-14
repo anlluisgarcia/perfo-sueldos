@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/luisgar2/sueldos.btzminera.com.ar
+    - export DEPLOYPATH=/home/luisgar2/public_html/sueldos.btzminera.com.ar
     - /bin/cp -R server.js database.js package.json package-lock.json $DEPLOYPATH
     - /bin/cp -R public $DEPLOYPATH
