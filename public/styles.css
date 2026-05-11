@@ -39,7 +39,7 @@ body {
   min-height: 100vh;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #ff8c00 0%, #ffffff 100%);
 }
 #login-screen.active {
   display: flex;
