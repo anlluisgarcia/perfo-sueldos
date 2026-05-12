@@ -260,7 +260,7 @@ body {
 .logo-sm {
   width: 36px;
   height: 36px;
-  background: var(--primary);
+  background: #ff8c00;
   color: white;
   border-radius: 8px;
   display: inline-flex;
