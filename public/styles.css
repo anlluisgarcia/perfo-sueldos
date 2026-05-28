@@ -303,6 +303,25 @@ body {
   padding: 24px;
 }
 
+.admin-layout {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 84px;
+}
+
+.admin-main {
+  min-width: 0;
+}
+
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -331,27 +350,45 @@ body {
 
 .admin-tabs {
   display: flex;
+  flex-direction: column;
   gap: 4px;
-  margin-bottom: 24px;
-  border-bottom: 2px solid var(--gray-200);
+  background: white;
+  border-radius: var(--radius);
+  padding: 12px;
+  box-shadow: var(--shadow);
 }
 
 .admin-tab {
-  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
   border: none;
   background: none;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  color: var(--gray-500);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s;
+  color: var(--gray-700);
+  border-radius: 6px;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.admin-tab:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
 }
 
 .admin-tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+
+.admin-tab .tab-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .tab-content { display: none; }
@@ -950,6 +987,13 @@ tr:hover td {
 }
 
 /* ========== RESPONSIVE ========== */
+@media (max-width: 900px) {
+  .admin-layout { grid-template-columns: 1fr; gap: 16px; padding: 16px; }
+  .admin-sidebar { position: static; }
+  .admin-tabs { flex-direction: row; flex-wrap: wrap; }
+  .admin-tab { flex: 1 1 auto; justify-content: center; }
+}
+
 @media (max-width: 768px) {
   .form-row { flex-direction: column; gap: 0; }
   .login-container { margin: 16px; padding: 24px; }
@@ -962,6 +1006,6 @@ tr:hover td {
 
 @media (max-width: 480px) {
   .stats-row { grid-template-columns: 1fr; }
-  .admin-tabs { overflow-x: auto; }
+  .admin-tab span { font-size: 12px; }
   .nav-user span { display: none; }
 }
