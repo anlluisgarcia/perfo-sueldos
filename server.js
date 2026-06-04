@@ -18,6 +18,10 @@ app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Endpoint liviano para keep-alive (evita que Passenger apague el proceso por inactividad).
+// No toca la base de datos: responde al instante para mantener Node "caliente".
+app.get('/api/ping', (req, res) => res.json({ ok: true }));
+
 // Multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

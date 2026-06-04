@@ -1,0 +1,30 @@
+# ============================================================================
+#  .htaccess - Mantener la app Node SIEMPRE encendida (evitar arranque en frio)
+# ============================================================================
+#
+#  IMPORTANTE - LEER ANTES DE USAR:
+#
+#  cPanel YA crea automaticamente un .htaccess en el document root de la app
+#  ( /home/luisgar2/public_html/sueldos.btzminera.com.ar/.htaccess ) con la
+#  configuracion de Passenger (PassengerAppRoot, PassengerNodejs,
+#  PassengerStartupFile, PassengerAppType, etc.).
+#
+#  >>> NO reemplaces ese archivo por este. Si lo haces, la app deja de
+#      funcionar (error 502). <<<
+#
+#  Lo correcto es ABRIR el .htaccess ya existente en el document root y
+#  AGREGAR la(s) linea(s) de abajo (las que estan fuera de comentario),
+#  preferentemente al final, sin borrar el bloque que generó cPanel.
+#
+#  Si tu plan compartido no permite estas directivas, simplemente las ignora
+#  (no rompe nada). En ese caso usa el cron / UptimeRobot a /api/ping como
+#  metodo principal de keep-alive.
+# ----------------------------------------------------------------------------
+
+# Mantener como minimo 1 instancia de la app viva en todo momento,
+# para que Passenger no la apague por inactividad (elimina el arranque en frio).
+PassengerMinInstances 1
+
+# (Opcional) Evitar que la instancia ociosa se apague. Algunos hosts solo
+# permiten esta directiva a nivel de servidor; si la rechaza, dejala comentada.
+# PassengerPoolIdleTime 0
