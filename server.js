@@ -251,6 +251,11 @@ async function estamparFirmaAdmin(filePath, empresa) {
   fs.writeFileSync(filePath, Buffer.from(modifiedPdf));
 }
 
+// Un periodo valido es mensual (2024-03) o complementario (2024-SAC1 / 2024-SAC2)
+function periodoValido(periodo) {
+  return /^\d{4}-(0[1-9]|1[0-2]|SAC[12])$/.test(periodo || '');
+}
+
 app.post('/api/admin/recibos', authAdmin, upload.array('pdfs', 50), async (req, res) => {
   try {
     const { empleado_id, fecha_recibo, descripcion } = req.body;
@@ -259,6 +264,12 @@ app.post('/api/admin/recibos', authAdmin, upload.array('pdfs', 50), async (req, 
     }
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'Debe subir al menos un archivo PDF' });
+    }
+    if (!periodoValido(fecha_recibo)) {
+      for (const file of req.files) {
+        try { fs.unlinkSync(path.join(__dirname, 'uploads', file.filename)); } catch(e) {}
+      }
+      return res.status(400).json({ error: 'Periodo invalido. Use un mes o 1° SAC / 2° SAC' });
     }
     const db = getDb();
 
@@ -302,6 +313,12 @@ app.post('/api/admin/recibos/masivo', authAdmin, upload.array('pdfs', 100), asyn
     }
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'Debe subir al menos un archivo PDF' });
+    }
+    if (!periodoValido(fecha_recibo)) {
+      for (const file of req.files) {
+        try { fs.unlinkSync(path.join(__dirname, 'uploads', file.filename)); } catch(e) {}
+      }
+      return res.status(400).json({ error: 'Periodo invalido. Use un mes o 1° SAC / 2° SAC' });
     }
     const db = getDb();
     let asignados = 0;

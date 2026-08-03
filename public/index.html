@@ -319,8 +319,20 @@
                 </select>
               </div>
               <div class="form-group">
+                <label>Tipo de Per&iacute;odo *</label>
+                <select id="recibo-tipo" onchange="toggleTipoPeriodo('recibo')">
+                  <option value="mensual">Mensual</option>
+                  <option value="SAC1">1&deg; SAC</option>
+                  <option value="SAC2">2&deg; SAC</option>
+                </select>
+              </div>
+              <div class="form-group" id="grupo-recibo-mes">
                 <label>Fecha del Recibo *</label>
-                <input type="month" id="recibo-fecha" required>
+                <input type="month" id="recibo-fecha">
+              </div>
+              <div class="form-group hidden" id="grupo-recibo-anio">
+                <label>A&ntilde;o del SAC *</label>
+                <select id="recibo-anio"></select>
               </div>
             </div>
             <div class="form-group">
@@ -348,9 +360,23 @@
               <strong>Modo Masivo:</strong> Los archivos PDF deben contener el n&uacute;mero de DNI del empleado en su nombre.
               <br>Ejemplo: <code>recibo_12345678_marzo.pdf</code> se asignar&aacute; al empleado con DNI 12345678.
             </div>
-            <div class="form-group">
-              <label>Fecha del Recibo *</label>
-              <input type="month" id="recibo-fecha-masivo" required>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Tipo de Per&iacute;odo *</label>
+                <select id="recibo-masivo-tipo" onchange="toggleTipoPeriodo('recibo-masivo')">
+                  <option value="mensual">Mensual</option>
+                  <option value="SAC1">1&deg; SAC</option>
+                  <option value="SAC2">2&deg; SAC</option>
+                </select>
+              </div>
+              <div class="form-group" id="grupo-recibo-masivo-mes">
+                <label>Fecha del Recibo *</label>
+                <input type="month" id="recibo-masivo-fecha">
+              </div>
+              <div class="form-group hidden" id="grupo-recibo-masivo-anio">
+                <label>A&ntilde;o del SAC *</label>
+                <select id="recibo-masivo-anio"></select>
+              </div>
             </div>
             <div class="form-group">
               <label>Descripci&oacute;n (opcional)</label>
@@ -386,7 +412,13 @@
               <option value="BTZ MINERA">BTZ MINERA</option>
               <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
             </select>
+            <select id="filtro-tipo-historial" onchange="toggleTipoFiltroHistorial()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
+              <option value="mensual">Mensual</option>
+              <option value="SAC1">1&deg; SAC</option>
+              <option value="SAC2">2&deg; SAC</option>
+            </select>
             <input type="month" id="filtro-fecha-historial" onchange="filtrarHistorialRecibos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
+            <select id="filtro-anio-historial" class="hidden" onchange="filtrarHistorialRecibos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;"></select>
             <button class="btn btn-outline btn-sm" onclick="limpiarFiltroHistorial()">Limpiar filtros</button>
           </div>
           <div class="table-responsive">

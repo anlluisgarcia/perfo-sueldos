@@ -26,12 +26,46 @@ function headersAuth() {
 
 function formatFecha(fecha) {
   if (!fecha) return '-';
+  // Periodos complementarios: 2024-SAC1 / 2024-SAC2
+  const sac = fecha.match(/^(\d{4})-SAC([12])$/);
+  if (sac) return `${sac[2]}° SAC ${sac[1]}`;
   const parts = fecha.split('-');
   if (parts.length >= 2) {
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     return `${meses[parseInt(parts[1])-1]} ${parts[0]}`;
   }
   return fecha;
+}
+
+// ==================== PERIODOS (mensual / SAC) ====================
+// Un periodo es "YYYY-MM" (mensual) o "YYYY-SAC1" / "YYYY-SAC2" (complementario).
+
+function llenarSelectAnios(selectId, incluirTodos) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const actual = new Date().getFullYear();
+  let opts = incluirTodos ? '<option value="">Todos los a&ntilde;os</option>' : '';
+  for (let a = actual + 1; a >= actual - 10; a--) {
+    opts += `<option value="${a}"${a === actual && !incluirTodos ? ' selected' : ''}>${a}</option>`;
+  }
+  sel.innerHTML = opts;
+}
+
+// prefix: 'recibo' o 'recibo-masivo'
+function toggleTipoPeriodo(prefix) {
+  const tipo = document.getElementById(`${prefix}-tipo`).value;
+  const esSac = tipo !== 'mensual';
+  document.getElementById(`grupo-${prefix}-mes`).classList.toggle('hidden', esSac);
+  document.getElementById(`grupo-${prefix}-anio`).classList.toggle('hidden', !esSac);
+}
+
+function getPeriodoSeleccionado(prefix) {
+  const tipo = document.getElementById(`${prefix}-tipo`).value;
+  if (tipo === 'mensual') {
+    return document.getElementById(`${prefix}-fecha`).value;
+  }
+  const anio = document.getElementById(`${prefix}-anio`).value;
+  return anio ? `${anio}-${tipo}` : '';
 }
 
 // ==================== LOGIN ====================
@@ -364,6 +398,10 @@ document.addEventListener('DOMContentLoaded', () => {
   setupFileInput('recibo-archivos', 'archivos-seleccionados');
   setupFileInput('recibo-archivos-masivo', 'archivos-seleccionados-masivo');
 
+  llenarSelectAnios('recibo-anio', false);
+  llenarSelectAnios('recibo-masivo-anio', false);
+  llenarSelectAnios('filtro-anio-historial', true);
+
   // Restaurar sesión si existe
   const savedToken = localStorage.getItem('token');
   const savedRole = localStorage.getItem('userRole');
@@ -401,9 +439,14 @@ function setupFileInput(inputId, listaId) {
 async function subirReciboIndividual(e) {
   e.preventDefault();
   const resultadoEl = document.getElementById('upload-resultado');
+  const periodo = getPeriodoSeleccionado('recibo');
+  if (!periodo) {
+    showToast('Seleccione el periodo del recibo', 'error');
+    return;
+  }
   const formData = new FormData();
   formData.append('empleado_id', document.getElementById('recibo-empleado').value);
-  formData.append('fecha_recibo', document.getElementById('recibo-fecha').value);
+  formData.append('fecha_recibo', periodo);
   formData.append('descripcion', document.getElementById('recibo-descripcion').value);
 
   const files = document.getElementById('recibo-archivos').files;
@@ -426,6 +469,7 @@ async function subirReciboIndividual(e) {
     resultadoEl.classList.remove('hidden');
     showToast(data.message);
     document.getElementById('form-upload-individual').reset();
+    toggleTipoPeriodo('recibo');
     document.getElementById('archivos-seleccionados').innerHTML = '';
     cargarEstadisticas();
   } catch (err) {
@@ -439,8 +483,13 @@ async function subirReciboIndividual(e) {
 async function subirReciboMasivo(e) {
   e.preventDefault();
   const resultadoEl = document.getElementById('upload-resultado');
+  const periodo = getPeriodoSeleccionado('recibo-masivo');
+  if (!periodo) {
+    showToast('Seleccione el periodo del recibo', 'error');
+    return;
+  }
   const formData = new FormData();
-  formData.append('fecha_recibo', document.getElementById('recibo-fecha-masivo').value);
+  formData.append('fecha_recibo', periodo);
   formData.append('descripcion', document.getElementById('recibo-descripcion-masivo').value);
 
   const files = document.getElementById('recibo-archivos-masivo').files;
@@ -467,6 +516,7 @@ async function subirReciboMasivo(e) {
     resultadoEl.classList.remove('hidden');
     showToast(data.message);
     document.getElementById('form-upload-masivo').reset();
+    toggleTipoPeriodo('recibo-masivo');
     document.getElementById('archivos-seleccionados-masivo').innerHTML = '';
     cargarEstadisticas();
   } catch (err) {
@@ -762,14 +812,32 @@ function verReciboFirmado(id) {
   window.open(`${API}/api/admin/recibo-firmado/${id}?token=${token}`, '_blank');
 }
 
+function toggleTipoFiltroHistorial() {
+  const esSac = document.getElementById('filtro-tipo-historial').value !== 'mensual';
+  document.getElementById('filtro-fecha-historial').classList.toggle('hidden', esSac);
+  document.getElementById('filtro-anio-historial').classList.toggle('hidden', !esSac);
+  filtrarHistorialRecibos();
+}
+
+// Sin año elegido, el filtro SAC muestra ese complementario de todos los años.
+function coincidePeriodoFiltro(fechaRecibo) {
+  const periodo = fechaRecibo || '';
+  const tipo = document.getElementById('filtro-tipo-historial').value;
+  if (tipo === 'mensual') {
+    const mes = document.getElementById('filtro-fecha-historial').value;
+    return !mes || periodo === mes;
+  }
+  const anio = document.getElementById('filtro-anio-historial').value;
+  return anio ? periodo === `${anio}-${tipo}` : periodo.endsWith(`-${tipo}`);
+}
+
 function filtrarHistorialRecibos() {
   const busqueda = document.getElementById('buscar-empleado-historial').value.toLowerCase().trim();
   const empresa = document.getElementById('filtro-empresa-historial').value;
-  const fecha = document.getElementById('filtro-fecha-historial').value;
   const filtrados = historialRecibosData.filter(r => {
     const coincideTexto = !busqueda || r.empleado_nombre.toLowerCase().includes(busqueda) || r.dni.toLowerCase().includes(busqueda);
     const coincideEmpresa = !empresa || (r.empresa || '') === empresa;
-    const coincideFecha = !fecha || r.fecha_recibo === fecha;
+    const coincideFecha = coincidePeriodoFiltro(r.fecha_recibo);
     return coincideTexto && coincideEmpresa && coincideFecha;
   });
   renderHistorialRecibos(filtrados);
@@ -778,7 +846,11 @@ function filtrarHistorialRecibos() {
 function limpiarFiltroHistorial() {
   document.getElementById('buscar-empleado-historial').value = '';
   document.getElementById('filtro-empresa-historial').value = '';
+  document.getElementById('filtro-tipo-historial').value = 'mensual';
   document.getElementById('filtro-fecha-historial').value = '';
+  document.getElementById('filtro-anio-historial').value = '';
+  document.getElementById('filtro-fecha-historial').classList.remove('hidden');
+  document.getElementById('filtro-anio-historial').classList.add('hidden');
   renderHistorialRecibos(historialRecibosData);
 }
 
