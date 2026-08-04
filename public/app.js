@@ -16,6 +16,21 @@ function showScreen(screenId) {
   document.getElementById(screenId).classList.add('active');
 }
 
+// Cuando el servidor responde HTML en vez de JSON (404 de Express porque quedo
+// corriendo una version vieja, o un error de Passenger) el res.json() falla con un
+// "Unexpected token '<'" que no le dice nada a nadie. Esto lo traduce.
+async function leerJson(res) {
+  const texto = await res.text();
+  try {
+    return JSON.parse(texto);
+  } catch {
+    if (res.status === 404) {
+      throw new Error('El servidor no reconoce esta funcion. Hay que reiniciar la aplicacion en el servidor para que tome la version nueva.');
+    }
+    throw new Error(`El servidor respondio de forma inesperada (HTTP ${res.status})`);
+  }
+}
+
 function headers() {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
@@ -415,7 +430,7 @@ async function verDatosEmpleado(id) {
 
   try {
     const res = await fetch(`${API}/api/admin/empleados/${id}/datos`, { headers: headersAuth() });
-    const data = await res.json();
+    const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error || 'Error al obtener los datos');
 
     document.getElementById('modal-datos-subtitulo').textContent =
@@ -488,7 +503,7 @@ let fichasCache = [];
 async function cargarFichas() {
   try {
     const res = await fetch(`${API}/api/admin/fichas`, { headers: headersAuth() });
-    const data = await res.json();
+    const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error || 'Error al listar las fichas');
     fichasCache = data;
     filtrarFichas();
@@ -568,7 +583,7 @@ async function exportarFichasExcel() {
   try {
     const res = await fetch(`${API}/api/admin/fichas/export?${params.toString()}`, { headers: headersAuth() });
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+      const data = await leerJson(res).catch(err => ({ error: err.message }));
       throw new Error(data.error || 'Error al generar el Excel');
     }
     const blob = await res.blob();
@@ -600,7 +615,7 @@ async function asignarEmpresaFicha(id, select) {
       headers: headers(),
       body: JSON.stringify({ empresa })
     });
-    const data = await res.json();
+    const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error);
 
     if (ficha) ficha.empresa = empresa;
@@ -1668,7 +1683,7 @@ async function cargarMisDatos() {
   initMisDatosSelects();
   try {
     const res = await fetch(`${API}/api/empleado/mis-datos`, { headers: headersAuth() });
-    const data = await res.json();
+    const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error || 'Error al obtener sus datos');
 
     const d = data.datos || {};
@@ -1772,7 +1787,7 @@ async function guardarMisDatos(e) {
       headers: headers(),
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
+    const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error);
     showToast(data.message);
     cargarMisDatos();
