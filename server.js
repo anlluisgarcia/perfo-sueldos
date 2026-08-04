@@ -248,6 +248,162 @@ app.get('/api/admin/fichas', authAdmin, async (req, res) => {
   }
 });
 
+// Traduce los filtros del listado de fichas a SQL. Los mismos criterios que aplica
+// la tabla en pantalla, para que lo exportado sea lo que el admin esta viendo.
+function filtrosFichas(query) {
+  const condiciones = [];
+  const params = [];
+
+  const q = (query.q || '').trim();
+  if (q) {
+    condiciones.push('(e.nombre LIKE ? OR e.dni LIKE ? OR d.cuit LIKE ? OR d.apellidos LIKE ? OR d.nombres LIKE ?)');
+    const like = `%${q}%`;
+    params.push(like, like, like, like, like);
+  }
+
+  const empresa = (query.empresa || '').trim();
+  if (empresa === '__sin__') {
+    condiciones.push("(e.empresa IS NULL OR e.empresa = '')");
+  } else if (empresa) {
+    condiciones.push('e.empresa = ?');
+    params.push(empresa);
+  }
+
+  const ficha = (query.ficha || '').trim();
+  if (ficha === 'completa') condiciones.push('d.id IS NOT NULL');
+  else if (ficha === 'pendiente') condiciones.push('d.id IS NULL');
+
+  return { where: condiciones.length ? 'WHERE ' + condiciones.join(' AND ') : '', params };
+}
+
+// Columnas de la hoja "Empleados". La clave es el nombre de columna que devuelve la
+// consulta; los campos calculados se arman abajo.
+const COLUMNAS_EXPORT = [
+  ['Apellidos', 'apellidos', 22], ['Nombres', 'nombres', 22],
+  ['Nombre (alta)', 'nombre', 26], ['DNI', 'dni', 12], ['CUIT', 'cuit', 16],
+  ['Email', 'email', 28], ['Estado Civil', 'estado_civil', 14],
+  ['Fecha Nacimiento', 'fecha_nacimiento', 16], ['Sexo', 'sexo', 12],
+  ['Grupo Sanguineo', 'grupo_sanguineo', 14], ['Nacionalidad', 'nacionalidad', 18],
+  ['Domicilio', 'domicilio', 28], ['Localidad', 'localidad', 20],
+  ['Codigo Postal', 'codigo_postal', 12], ['Provincia', 'provincia', 22],
+  ['Pais', 'pais', 18], ['Obra Social', 'obra_social', 12],
+  ['Carnet Conducir', 'carnet_conducir', 14], ['Clases Carnet', 'carnet_clases', 18],
+  ['Comentario Carnet', 'carnet_comentario', 30], ['Nivel de Estudio', 'nivel_estudio', 22],
+  ['Profesion', 'profesion', 20], ['Apellido Conyuge', 'apellido_conyuge', 20],
+  ['Nombre Conyuge', 'nombre_conyuge', 20], ['Cantidad de Hijos', 'cantidad_hijos', 14],
+  ['Banco', 'banco', 20], ['CBU', 'cbu', 26], ['Tel. Fijo', 'tel_fijo', 16],
+  ['Celular Empleado', 'celular_empleado', 16], ['Celular Conyuge', 'celular_conyuge', 16],
+  ['Talle Camisa', 'talle_camisa', 12], ['Talle Pantalon', 'talle_pantalon', 12],
+  ['Talle Zapato', 'talle_zapato', 12], ['Talle Mameluco', 'talle_mameluco', 12],
+  ['Empresa', 'empresa', 26], ['Estado', 'estado', 12],
+  ['Ficha', 'ficha_estado', 12], ['Beneficiarios', 'beneficiarios', 13],
+  ['Ultima Actualizacion', 'actualizado', 20]
+];
+
+function fechaDDMMAAAA(valor) {
+  if (!valor) return '';
+  const partes = String(valor).substring(0, 10).split('-');
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : String(valor);
+}
+
+function estiloEncabezado(hoja) {
+  const fila = hoja.getRow(1);
+  fila.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  fila.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+  fila.alignment = { vertical: 'middle' };
+  fila.height = 20;
+  hoja.views = [{ state: 'frozen', ySplit: 1 }];
+  hoja.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: hoja.columnCount } };
+}
+
+app.get('/api/admin/fichas/export', authAdmin, async (req, res) => {
+  // Se carga aca y no arriba: si en el servidor falta la dependencia (deploy sin
+  // npm install), solo deja de andar la exportacion y no el portal entero.
+  let ExcelJS;
+  try {
+    ExcelJS = require('exceljs');
+  } catch {
+    console.error('Falta la dependencia exceljs. Ejecute npm install en el servidor.');
+    return res.status(500).json({ error: 'La exportacion no esta disponible: falta instalar la dependencia exceljs en el servidor' });
+  }
+
+  try {
+    const db = getDb();
+    const { where, params } = filtrosFichas(req.query);
+
+    const result = await db.exec(`
+      SELECT e.id, e.nombre, e.dni, e.empresa, e.estado, d.*,
+             CASE WHEN d.id IS NOT NULL THEN 'Cargada' ELSE 'Pendiente' END AS ficha_estado,
+             (SELECT COUNT(*) FROM empleados_beneficiarios b WHERE b.empleado_id = e.id) AS beneficiarios
+      FROM empleados e
+      LEFT JOIN empleados_datos d ON d.empleado_id = e.id
+      ${where}
+      ORDER BY e.nombre
+    `, params);
+
+    const empleados = (result.length === 0) ? [] : result[0].values.map(row => {
+      const obj = {};
+      result[0].columns.forEach((col, i) => obj[col] = row[i]);
+      return obj;
+    });
+
+    const benefResult = await db.exec(`
+      SELECT e.nombre AS empleado, e.dni AS empleado_dni, e.empresa,
+             b.apellido_nombre, b.parentesco, b.dni, b.porcentaje
+      FROM empleados_beneficiarios b
+      JOIN empleados e ON e.id = b.empleado_id
+      LEFT JOIN empleados_datos d ON d.empleado_id = e.id
+      ${where}
+      ORDER BY e.nombre, b.id
+    `, params);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Portal de Recibos Digitales';
+
+    const hoja = workbook.addWorksheet('Empleados');
+    hoja.columns = COLUMNAS_EXPORT.map(([header, key, width]) => ({ header, key, width }));
+    empleados.forEach(emp => {
+      hoja.addRow(Object.assign({}, emp, {
+        empresa: emp.empresa || 'Sin asignar',
+        fecha_nacimiento: fechaDDMMAAAA(emp.fecha_nacimiento),
+        actualizado: emp.updated_at ? fechaDDMMAAAA(emp.updated_at) : ''
+      }));
+    });
+    estiloEncabezado(hoja);
+
+    const hojaBenef = workbook.addWorksheet('Beneficiarios');
+    hojaBenef.columns = [
+      { header: 'Empleado', key: 'empleado', width: 28 },
+      { header: 'DNI Empleado', key: 'empleado_dni', width: 14 },
+      { header: 'Empresa', key: 'empresa', width: 26 },
+      { header: 'Beneficiario', key: 'apellido_nombre', width: 28 },
+      { header: 'Parentesco', key: 'parentesco', width: 16 },
+      { header: 'DNI', key: 'dni', width: 14 },
+      { header: 'Porcentaje', key: 'porcentaje', width: 12 }
+    ];
+    if (benefResult.length > 0) {
+      benefResult[0].values.forEach(row => {
+        const obj = {};
+        benefResult[0].columns.forEach((col, i) => obj[col] = row[i]);
+        obj.empresa = obj.empresa || 'Sin asignar';
+        obj.porcentaje = parseFloat(obj.porcentaje) || 0;
+        hojaBenef.addRow(obj);
+      });
+      hojaBenef.getColumn('porcentaje').numFmt = '0.00"%"';
+    }
+    estiloEncabezado(hojaBenef);
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="datos-empleados-${fecha}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Exportar fichas error:', err);
+    res.status(500).json({ error: 'Error al generar el Excel' });
+  }
+});
+
 // Asigna la empresa del empleado. Se aplica a los recibos que se suban de aqui en
 // mas; los ya cargados conservan la empresa que se guardo en su momento.
 app.put('/api/admin/empleados/:id/empresa', authAdmin, async (req, res) => {
@@ -823,6 +979,22 @@ app.post('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
       return res.status(400).json({ error: 'El email no tiene un formato valido' });
     }
 
+    // El DNI es unico y es el mismo con el que el empleado inicia sesion, asi que
+    // se valida antes de tocar nada. Si no viene en el body, queda como estaba.
+    const db = getDb();
+    let dniNuevo = null;
+    if (req.body.dni !== undefined) {
+      const dni = String(req.body.dni).trim();
+      if (!/^\d{7,8}$/.test(dni)) {
+        return res.status(400).json({ error: 'El DNI debe tener 7 u 8 digitos, sin puntos ni espacios' });
+      }
+      const duplicado = await db.exec('SELECT id FROM empleados WHERE dni = ? AND id != ?', [dni, req.user.id]);
+      if (duplicado.length > 0 && duplicado[0].values.length > 0) {
+        return res.status(400).json({ error: 'Ya existe otro empleado registrado con ese DNI' });
+      }
+      dniNuevo = dni;
+    }
+
     // Solo se guardan los beneficiarios con nombre; el resto de la fila se descarta.
     const benefLimpios = [];
     for (const b of beneficiarios) {
@@ -852,7 +1024,6 @@ app.post('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
     const placeholders = columnas.map(() => '?').join(', ');
     const asignaciones = CAMPOS_DATOS.map(c => `${c} = ?`).join(', ');
 
-    const db = getDb();
     await db.run(
       `INSERT INTO empleados_datos (${columnas.join(', ')}) VALUES (${placeholders})
        ON DUPLICATE KEY UPDATE ${asignaciones}`,
@@ -867,7 +1038,22 @@ app.post('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
       );
     }
 
-    res.json({ message: 'Datos guardados exitosamente' });
+    let dniCambiado = false;
+    if (dniNuevo !== null) {
+      const actual = await db.exec('SELECT dni FROM empleados WHERE id = ?', [req.user.id]);
+      const dniActual = (actual.length > 0 && actual[0].values.length > 0) ? actual[0].values[0][0] : '';
+      if (dniActual !== dniNuevo) {
+        await db.run('UPDATE empleados SET dni = ? WHERE id = ?', [dniNuevo, req.user.id]);
+        dniCambiado = true;
+      }
+    }
+
+    res.json({
+      message: dniCambiado
+        ? 'Datos guardados. A partir de ahora debe iniciar sesion con el DNI ' + dniNuevo
+        : 'Datos guardados exitosamente',
+      dni_cambiado: dniCambiado
+    });
   } catch (err) {
     console.error('Mis datos POST error:', err);
     res.status(500).json({ error: 'Error al guardar sus datos' });

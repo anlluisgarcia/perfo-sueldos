@@ -1041,12 +1041,6 @@ tr:hover td {
   box-shadow: 0 0 0 3px var(--primary-light);
 }
 
-.input-readonly {
-  background: var(--gray-100);
-  color: var(--gray-500);
-  cursor: not-allowed;
-}
-
 .campo-otro { margin-top: 8px; }
 
 .checkbox-grid {

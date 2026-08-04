@@ -552,6 +552,43 @@ function limpiarFiltroFichas() {
   filtrarFichas();
 }
 
+// Exporta lo que el admin esta viendo: se mandan los mismos filtros de la tabla.
+async function exportarFichasExcel() {
+  const boton = document.getElementById('btn-exportar-fichas');
+  const textoOriginal = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = 'Generando...';
+
+  const params = new URLSearchParams({
+    q: document.getElementById('buscar-ficha').value.trim(),
+    empresa: document.getElementById('filtro-empresa-fichas').value,
+    ficha: document.getElementById('filtro-estado-ficha').value
+  });
+
+  try {
+    const res = await fetch(`${API}/api/admin/fichas/export?${params.toString()}`, { headers: headersAuth() });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Error al generar el Excel');
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `datos-empleados-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Excel generado exitosamente');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = textoOriginal;
+  }
+}
+
 async function asignarEmpresaFicha(id, select) {
   const ficha = fichasCache.find(f => f.id === id);
   const anterior = ficha ? (ficha.empresa || '') : '';
@@ -1693,6 +1730,7 @@ async function guardarMisDatos(e) {
   const carnet = document.getElementById('dato-carnet-conducir').value;
 
   const payload = {
+    dni: document.getElementById('dato-dni').value.trim(),
     apellidos: document.getElementById('dato-apellidos').value.trim(),
     nombres: document.getElementById('dato-nombres').value.trim(),
     email: document.getElementById('dato-email').value.trim(),

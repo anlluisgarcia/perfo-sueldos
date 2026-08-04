@@ -203,6 +203,7 @@
         <div class="card">
           <div class="section-header">
             <h2>Datos de Empleados</h2>
+            <button class="btn btn-primary" id="btn-exportar-fichas" onclick="exportarFichasExcel()">Exportar a Excel</button>
           </div>
           <p class="firma-descripcion">Ficha personal que carga cada empleado desde su portal. La empresa asignada aqu&iacute; se aplica a los recibos que se suban de aqu&iacute; en m&aacute;s; los ya cargados conservan la empresa que ten&iacute;an al subirse.</p>
 
@@ -681,7 +682,7 @@
       <div id="emp-tab-datos" class="emp-tab-content">
         <div class="card">
           <h2>Mis Datos</h2>
-          <p class="firma-descripcion">Complete y mantenga actualizada su informaci&oacute;n personal. El DNI proviene del alta de usuario y no puede modificarse.</p>
+          <p class="firma-descripcion">Complete y mantenga actualizada su informaci&oacute;n personal. El DNI viene cargado desde el alta de usuario; si est&aacute; mal puede corregirlo, pero recuerde que es el mismo n&uacute;mero con el que inicia sesi&oacute;n.</p>
 
           <form id="form-mis-datos" onsubmit="guardarMisDatos(event)">
             <!-- Datos personales -->
@@ -714,8 +715,8 @@
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>DNI</label>
-                <input type="text" id="dato-dni" readonly disabled class="input-readonly">
+                <label>DNI *</label>
+                <input type="text" id="dato-dni" maxlength="8" inputmode="numeric" placeholder="Sin puntos ni espacios">
               </div>
               <div class="form-group">
                 <label>CUIT</label>

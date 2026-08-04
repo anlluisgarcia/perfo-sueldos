@@ -4,3 +4,7 @@ deployment:
     - export DEPLOYPATH=/home/luisgar2/public_html/sueldos.btzminera.com.ar
     - /bin/cp -R server.js database.js package.json package-lock.json $DEPLOYPATH
     - /bin/cp -R public $DEPLOYPATH
+    # Instala las dependencias nuevas (exceljs) usando el entorno de Node.js Selector
+    # si existe. Si falla, no corta el deploy: hay que usar "Run NPM Install" desde
+    # cPanel > Setup Node.js App.
+    - cd $DEPLOYPATH && { ACT=$(ls -d /home/luisgar2/nodevenv/public_html/sueldos.btzminera.com.ar/*/bin/activate 2>/dev/null | head -1); [ -n "$ACT" ] && . "$ACT"; npm install --omit=dev; } || echo "npm install fallo - ejecute Run NPM Install desde cPanel"
