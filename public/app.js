@@ -802,7 +802,7 @@ function cerrarModalDatosEmpleado() {
 }
 
 // ---------- Imprimir ----------
-function fichaImprimibleHTML(data) {
+function fichaImprimibleHTML(data, logoDataUrl) {
   const d = Object.assign({}, data.datos || {}, { dni: data.dni });
   const secciones = CAMPOS_FICHA.filter(([titulo]) => titulo !== SECCION_CROQUIS).map(([titulo, campos]) => `
     <h2>${escAttr(titulo)}</h2>
@@ -826,16 +826,12 @@ function fichaImprimibleHTML(data) {
 
   const croquis = `<div class="croquis">${croquisSVG(d)}</div>`;
 
-  // El logo solo se imprime para BTZ MINERA: Perforaciones Iglesianas no lleva.
-  const esBtz = String(data.empresa || '').trim().toUpperCase() === 'BTZ MINERA';
-  const logo = !esBtz ? '' : `
+  // Cada empresa lleva su propio logo. Llega ya convertido a data URI (ver
+  // logoEmpresaDataURL): la ventana de impresion es about:blank, asi que una ruta
+  // relativa no resolveria y el dialogo podria abrirse antes de bajar la imagen.
+  const logo = !logoDataUrl ? '' : `
     <div class="logo-empresa">
-      <svg viewBox="0 0 100 100" role="img" aria-label="BTZ MINERA">
-        <rect width="100" height="100" rx="18" fill="#ff8c00" />
-        <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
-              font-family="'Segoe UI', sans-serif" font-size="34" font-weight="700" fill="#ffffff">BTZ</text>
-      </svg>
-      <span>BTZ MINERA</span>
+      <img src="${logoDataUrl}" alt="${escAttr(data.empresa || '')}">
     </div>`;
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
@@ -846,11 +842,10 @@ function fichaImprimibleHTML(data) {
       header { display: flex; align-items: center; justify-content: space-between; gap: 16px;
                border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 18px; }
       header h1 { font-size: 18px; margin: 0; color: #1e3a5f; }
-      /* El recuadro naranja va como SVG y no como fondo CSS: asi se imprime aunque
-         el navegador tenga desactivados los graficos de fondo. */
-      .logo-empresa { display: flex; align-items: center; gap: 7px; flex: none; }
-      .logo-empresa svg { width: 13mm; height: 13mm; }
-      .logo-empresa span { font-size: 11px; font-weight: 700; color: #1e3a5f; letter-spacing: .04em; }
+      /* Los dos logos tienen proporciones muy distintas (BTZ es apaisado y PI casi
+         cuadrado): se limitan alto y ancho para que ninguno desborde el encabezado. */
+      .logo-empresa { flex: none; }
+      .logo-empresa img { max-height: 16mm; max-width: 55mm; object-fit: contain; display: block; }
       h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #1e3a5f;
            border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin: 16px 0 10px; }
       .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 18px; }
@@ -901,6 +896,38 @@ function fichaImprimibleHTML(data) {
     </body></html>`;
 }
 
+// Logo que va en la ficha impresa segun la empresa asignada al empleado.
+const LOGOS_EMPRESA = {
+  'BTZ MINERA': 'img/logo-btz-minera.png',
+  'PERFORACIONES IGLESIANAS': 'img/logo-perforaciones-iglesianas.jpg'
+};
+const logosCache = {};
+
+// Se devuelve como data URI para que quede incrustado en el HTML de impresion: la
+// ventana no tiene URL propia y el dialogo se abre sin esperar descargas externas.
+// Si el logo no se puede leer, la ficha sale sin logo en vez de fallar.
+async function logoEmpresaDataURL(empresa) {
+  const ruta = LOGOS_EMPRESA[String(empresa || '').trim().toUpperCase()];
+  if (!ruta) return '';
+  if (logosCache[ruta]) return logosCache[ruta];
+  try {
+    const res = await fetch(ruta);
+    if (!res.ok) return '';
+    const blob = await res.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onload = () => resolve(lector.result);
+      lector.onerror = () => reject(new Error('No se pudo leer el logo'));
+      lector.readAsDataURL(blob);
+    });
+    logosCache[ruta] = dataUrl;
+    return dataUrl;
+  } catch (err) {
+    console.error('Logo de empresa:', err);
+    return '';
+  }
+}
+
 async function imprimirFichaEmpleado(id) {
   // La ventana se abre antes del fetch: si se abriera despues del await, el
   // navegador lo trata como popup no solicitado y lo bloquea.
@@ -916,8 +943,10 @@ async function imprimirFichaEmpleado(id) {
     const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error || 'Error al obtener los datos');
 
+    const logoDataUrl = await logoEmpresaDataURL(data.empresa);
+
     ventana.document.open();
-    ventana.document.write(fichaImprimibleHTML(data));
+    ventana.document.write(fichaImprimibleHTML(data, logoDataUrl));
     ventana.document.close();
     ventana.focus();
 
