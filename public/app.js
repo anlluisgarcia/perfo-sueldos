@@ -917,6 +917,7 @@ function switchEmpTab(tab) {
   document.getElementById(`emp-tab-${tab}`).classList.add('active');
 
   if (tab === 'firma') cargarMiFirma();
+  if (tab === 'datos') cargarMisDatos();
 }
 
 // ==================== EMPLEADO - MI FIRMA ====================
@@ -1255,6 +1256,270 @@ function confirmarEliminarUsuario(id, nombre) {
     cerrarModal();
   };
   modal.classList.remove('hidden');
+}
+
+// ==================== EMPLEADO - MIS DATOS ====================
+// Argentina va primero por ser el caso mas frecuente; el resto en orden alfabetico.
+const PAISES_AMERICA = [
+  'Argentina', 'Antigua y Barbuda', 'Bahamas', 'Barbados', 'Belice', 'Bolivia', 'Brasil',
+  'Canadá', 'Chile', 'Colombia', 'Costa Rica', 'Cuba', 'Dominica', 'Ecuador',
+  'El Salvador', 'Estados Unidos', 'Granada', 'Guatemala', 'Guyana', 'Haití', 'Honduras',
+  'Jamaica', 'México', 'Nicaragua', 'Panamá', 'Paraguay', 'Perú',
+  'República Dominicana', 'San Cristóbal y Nieves', 'San Vicente y las Granadinas',
+  'Santa Lucía', 'Surinam', 'Trinidad y Tobago', 'Uruguay', 'Venezuela'
+];
+
+const PROVINCIAS_ARG = [
+  'Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Catamarca', 'Chaco', 'Chubut',
+  'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
+  'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis',
+  'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'
+];
+
+const GRUPOS_SANGUINEOS = ['0-', '0+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
+
+const CLASES_CARNET = [
+  { valor: 'A', texto: 'A - Motocicletas y ciclomotores' },
+  { valor: 'B', texto: 'B - Automóviles y camionetas' },
+  { valor: 'C', texto: 'C - Camiones sin acoplado' },
+  { valor: 'D', texto: 'D - Servicio de transporte de pasajeros' },
+  { valor: 'E', texto: 'E - Camiones con acoplado y maquinaria especial' },
+  { valor: 'F', texto: 'F - Vehículos adaptados para personas con discapacidad' },
+  { valor: 'G', texto: 'G - Tractores y maquinaria agrícola' }
+];
+
+const VALOR_OTRO = '__otro__';
+let misDatosSelectsListos = false;
+
+function escAttr(valor) {
+  return String(valor === undefined || valor === null ? '' : valor)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function opcionesLista(items, incluirOtro) {
+  let html = '<option value="">Seleccionar...</option>';
+  html += items.map(i => `<option value="${escAttr(i)}">${escAttr(i)}</option>`).join('');
+  if (incluirOtro) html += `<option value="${VALOR_OTRO}">Otro (cargar manualmente)</option>`;
+  return html;
+}
+
+function initMisDatosSelects() {
+  if (misDatosSelectsListos) return;
+  misDatosSelectsListos = true;
+
+  document.getElementById('dato-nacionalidad').innerHTML = opcionesLista(PAISES_AMERICA, true);
+  document.getElementById('dato-pais').innerHTML = opcionesLista(PAISES_AMERICA, true);
+  document.getElementById('dato-provincia').innerHTML = opcionesLista(PROVINCIAS_ARG, false);
+  document.getElementById('dato-grupo-sanguineo').innerHTML = opcionesLista(GRUPOS_SANGUINEOS, false);
+
+  document.getElementById('carnet-clases').innerHTML = CLASES_CARNET.map(c => `
+    <label class="checkbox-item">
+      <input type="checkbox" class="carnet-clase" value="${escAttr(c.valor)}">
+      <span>${escAttr(c.texto)}</span>
+    </label>`).join('');
+}
+
+// Los selects de pais/nacionalidad admiten un valor libre cuando no es de America.
+function toggleOtroPais(campo) {
+  const sel = document.getElementById(`dato-${campo}`);
+  const input = document.getElementById(`dato-${campo}-otro`);
+  const esOtro = sel.value === VALOR_OTRO;
+  input.classList.toggle('hidden', !esOtro);
+  if (!esOtro) input.value = '';
+}
+
+function setSelectConOtro(campo, valor) {
+  const sel = document.getElementById(`dato-${campo}`);
+  const input = document.getElementById(`dato-${campo}-otro`);
+  const v = valor || '';
+  const enLista = Array.from(sel.options).some(o => o.value === v && o.value !== VALOR_OTRO);
+  if (v && !enLista) {
+    sel.value = VALOR_OTRO;
+    input.value = v;
+    input.classList.remove('hidden');
+  } else {
+    sel.value = v;
+    input.value = '';
+    input.classList.add('hidden');
+  }
+}
+
+function getSelectConOtro(campo) {
+  const sel = document.getElementById(`dato-${campo}`);
+  if (sel.value === VALOR_OTRO) {
+    return document.getElementById(`dato-${campo}-otro`).value.trim();
+  }
+  return sel.value;
+}
+
+function toggleCarnetConducir() {
+  const tiene = document.getElementById('dato-carnet-conducir').value === 'SI';
+  document.getElementById('carnet-detalle').classList.toggle('hidden', !tiene);
+  if (!tiene) {
+    document.querySelectorAll('.carnet-clase').forEach(c => c.checked = false);
+    document.getElementById('dato-carnet-comentario').value = '';
+  }
+}
+
+// ---------- Beneficiarios del seguro ----------
+function agregarBeneficiario(b) {
+  const datos = b || {};
+  const tbody = document.getElementById('tabla-beneficiarios');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="ben-nombre" maxlength="200" value="${escAttr(datos.apellido_nombre)}" placeholder="Apellido y Nombre"></td>
+    <td><input type="text" class="ben-parentesco" maxlength="60" value="${escAttr(datos.parentesco)}" placeholder="Ej: C&oacute;nyuge"></td>
+    <td><input type="text" class="ben-dni" maxlength="20" value="${escAttr(datos.dni)}"></td>
+    <td><input type="number" class="ben-porcentaje" min="0" max="100" step="0.01" value="${escAttr(datos.porcentaje !== undefined && datos.porcentaje !== null ? datos.porcentaje : '')}" oninput="actualizarTotalBeneficiarios()"></td>
+    <td><button type="button" class="btn btn-danger btn-sm" onclick="quitarBeneficiario(this)">Quitar</button></td>`;
+  tbody.appendChild(tr);
+  actualizarTotalBeneficiarios();
+}
+
+function quitarBeneficiario(boton) {
+  boton.closest('tr').remove();
+  actualizarTotalBeneficiarios();
+}
+
+function actualizarTotalBeneficiarios() {
+  const total = Array.from(document.querySelectorAll('#tabla-beneficiarios .ben-porcentaje'))
+    .reduce((acc, i) => acc + (parseFloat(i.value) || 0), 0);
+  const el = document.getElementById('beneficiarios-total');
+  const filas = document.querySelectorAll('#tabla-beneficiarios tr').length;
+  if (filas === 0) {
+    el.textContent = '';
+    el.classList.remove('total-excedido');
+    return;
+  }
+  el.textContent = `Total asignado: ${total.toFixed(2)}%`;
+  el.classList.toggle('total-excedido', total > 100);
+}
+
+function leerBeneficiarios() {
+  return Array.from(document.querySelectorAll('#tabla-beneficiarios tr')).map(tr => ({
+    apellido_nombre: tr.querySelector('.ben-nombre').value.trim(),
+    parentesco: tr.querySelector('.ben-parentesco').value.trim(),
+    dni: tr.querySelector('.ben-dni').value.trim(),
+    porcentaje: tr.querySelector('.ben-porcentaje').value
+  })).filter(b => b.apellido_nombre);
+}
+
+// ---------- Carga y guardado ----------
+async function cargarMisDatos() {
+  initMisDatosSelects();
+  try {
+    const res = await fetch(`${API}/api/empleado/mis-datos`, { headers: headersAuth() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al obtener sus datos');
+
+    const d = data.datos || {};
+    document.getElementById('dato-dni').value = data.dni || '';
+
+    document.getElementById('dato-apellidos').value = d.apellidos || '';
+    document.getElementById('dato-nombres').value = d.nombres || '';
+    document.getElementById('dato-email').value = d.email || '';
+    document.getElementById('dato-estado-civil').value = d.estado_civil || '';
+    document.getElementById('dato-cuit').value = d.cuit || '';
+    document.getElementById('dato-fecha-nacimiento').value = (d.fecha_nacimiento || '').substring(0, 10);
+    document.getElementById('dato-sexo').value = d.sexo || '';
+    document.getElementById('dato-grupo-sanguineo').value = d.grupo_sanguineo || '';
+    setSelectConOtro('nacionalidad', d.nacionalidad);
+    document.getElementById('dato-domicilio').value = d.domicilio || '';
+    document.getElementById('dato-localidad').value = d.localidad || '';
+    document.getElementById('dato-codigo-postal').value = d.codigo_postal || '';
+    document.getElementById('dato-provincia').value = d.provincia || '';
+    setSelectConOtro('pais', d.pais);
+    document.getElementById('dato-obra-social').value = d.obra_social || '';
+
+    document.getElementById('dato-carnet-conducir').value = d.carnet_conducir || '';
+    const clases = (d.carnet_clases || '').split(',').map(c => c.trim()).filter(Boolean);
+    document.querySelectorAll('.carnet-clase').forEach(c => c.checked = clases.includes(c.value));
+    document.getElementById('dato-carnet-comentario').value = d.carnet_comentario || '';
+    document.getElementById('carnet-detalle').classList.toggle('hidden', d.carnet_conducir !== 'SI');
+
+    document.getElementById('dato-nivel-estudio').value = d.nivel_estudio || '';
+    document.getElementById('dato-profesion').value = d.profesion || '';
+    document.getElementById('dato-apellido-conyuge').value = d.apellido_conyuge || '';
+    document.getElementById('dato-nombre-conyuge').value = d.nombre_conyuge || '';
+    document.getElementById('dato-cantidad-hijos').value = d.cantidad_hijos !== undefined && d.cantidad_hijos !== null ? d.cantidad_hijos : 0;
+    document.getElementById('dato-banco').value = d.banco || '';
+    document.getElementById('dato-cbu').value = d.cbu || '';
+    document.getElementById('dato-tel-fijo').value = d.tel_fijo || '';
+    document.getElementById('dato-celular-empleado').value = d.celular_empleado || '';
+    document.getElementById('dato-celular-conyuge').value = d.celular_conyuge || '';
+    document.getElementById('dato-talle-camisa').value = d.talle_camisa || '';
+    document.getElementById('dato-talle-pantalon').value = d.talle_pantalon || '';
+    document.getElementById('dato-talle-zapato').value = d.talle_zapato || '';
+    document.getElementById('dato-talle-mameluco').value = d.talle_mameluco || '';
+
+    document.getElementById('tabla-beneficiarios').innerHTML = '';
+    (data.beneficiarios || []).forEach(b => agregarBeneficiario(b));
+    actualizarTotalBeneficiarios();
+
+    document.getElementById('datos-fecha-texto').textContent = d.updated_at
+      ? 'Ultima actualizacion: ' + new Date(d.updated_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function guardarMisDatos(e) {
+  e.preventDefault();
+
+  const clases = Array.from(document.querySelectorAll('.carnet-clase:checked')).map(c => c.value).join(', ');
+  const carnet = document.getElementById('dato-carnet-conducir').value;
+
+  const payload = {
+    apellidos: document.getElementById('dato-apellidos').value.trim(),
+    nombres: document.getElementById('dato-nombres').value.trim(),
+    email: document.getElementById('dato-email').value.trim(),
+    estado_civil: document.getElementById('dato-estado-civil').value,
+    cuit: document.getElementById('dato-cuit').value.trim(),
+    fecha_nacimiento: document.getElementById('dato-fecha-nacimiento').value,
+    sexo: document.getElementById('dato-sexo').value,
+    grupo_sanguineo: document.getElementById('dato-grupo-sanguineo').value,
+    nacionalidad: getSelectConOtro('nacionalidad'),
+    domicilio: document.getElementById('dato-domicilio').value.trim(),
+    localidad: document.getElementById('dato-localidad').value.trim(),
+    codigo_postal: document.getElementById('dato-codigo-postal').value.trim(),
+    provincia: document.getElementById('dato-provincia').value,
+    pais: getSelectConOtro('pais'),
+    obra_social: document.getElementById('dato-obra-social').value,
+    carnet_conducir: carnet,
+    carnet_clases: carnet === 'SI' ? clases : '',
+    carnet_comentario: carnet === 'SI' ? document.getElementById('dato-carnet-comentario').value.trim() : '',
+    nivel_estudio: document.getElementById('dato-nivel-estudio').value,
+    profesion: document.getElementById('dato-profesion').value.trim(),
+    apellido_conyuge: document.getElementById('dato-apellido-conyuge').value.trim(),
+    nombre_conyuge: document.getElementById('dato-nombre-conyuge').value.trim(),
+    cantidad_hijos: document.getElementById('dato-cantidad-hijos').value,
+    banco: document.getElementById('dato-banco').value.trim(),
+    cbu: document.getElementById('dato-cbu').value.trim(),
+    tel_fijo: document.getElementById('dato-tel-fijo').value.trim(),
+    celular_empleado: document.getElementById('dato-celular-empleado').value.trim(),
+    celular_conyuge: document.getElementById('dato-celular-conyuge').value.trim(),
+    talle_camisa: document.getElementById('dato-talle-camisa').value.trim(),
+    talle_pantalon: document.getElementById('dato-talle-pantalon').value.trim(),
+    talle_zapato: document.getElementById('dato-talle-zapato').value.trim(),
+    talle_mameluco: document.getElementById('dato-talle-mameluco').value.trim(),
+    beneficiarios: leerBeneficiarios()
+  };
+
+  try {
+    const res = await fetch(`${API}/api/empleado/mis-datos`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast(data.message);
+    cargarMisDatos();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 // ==================== EMPLEADO PORTAL ====================

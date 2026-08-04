@@ -538,6 +538,7 @@
       <div class="emp-tabs">
         <button class="emp-tab active" onclick="switchEmpTab('recibos')">Mis Recibos</button>
         <button class="emp-tab" onclick="switchEmpTab('firma')">Mi Firma</button>
+        <button class="emp-tab" onclick="switchEmpTab('datos')">Mis Datos</button>
       </div>
 
       <!-- Tab: Mis Recibos -->
@@ -623,6 +624,258 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Tab: Mis Datos -->
+      <div id="emp-tab-datos" class="emp-tab-content">
+        <div class="card">
+          <h2>Mis Datos</h2>
+          <p class="firma-descripcion">Complete y mantenga actualizada su informaci&oacute;n personal. El DNI proviene del alta de usuario y no puede modificarse.</p>
+
+          <form id="form-mis-datos" onsubmit="guardarMisDatos(event)">
+            <!-- Datos personales -->
+            <h4 class="datos-seccion">Datos personales</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Apellidos</label>
+                <input type="text" id="dato-apellidos" maxlength="150">
+              </div>
+              <div class="form-group">
+                <label>Nombres</label>
+                <input type="text" id="dato-nombres" maxlength="150">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="dato-email" maxlength="150" placeholder="ejemplo@correo.com">
+              </div>
+              <div class="form-group">
+                <label>Estado Civil</label>
+                <select id="dato-estado-civil">
+                  <option value="">Seleccionar...</option>
+                  <option value="Soltero">Soltero</option>
+                  <option value="Casado">Casado</option>
+                  <option value="Viudo">Viudo</option>
+                  <option value="Divorciado">Divorciado</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>DNI</label>
+                <input type="text" id="dato-dni" readonly disabled class="input-readonly">
+              </div>
+              <div class="form-group">
+                <label>CUIT</label>
+                <input type="text" id="dato-cuit" maxlength="20" placeholder="20-12345678-3">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fecha de Nacimiento</label>
+                <input type="date" id="dato-fecha-nacimiento">
+              </div>
+              <div class="form-group">
+                <label>Sexo</label>
+                <select id="dato-sexo">
+                  <option value="">Seleccionar...</option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Grupo Sangu&iacute;neo</label>
+                <select id="dato-grupo-sanguineo"></select>
+              </div>
+              <div class="form-group">
+                <label>Nacionalidad</label>
+                <select id="dato-nacionalidad" onchange="toggleOtroPais('nacionalidad')"></select>
+                <input type="text" id="dato-nacionalidad-otro" class="hidden campo-otro" maxlength="100" placeholder="Escriba la nacionalidad">
+              </div>
+            </div>
+
+            <!-- Domicilio -->
+            <h4 class="datos-seccion">Domicilio</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Domicilio</label>
+                <input type="text" id="dato-domicilio" maxlength="200" placeholder="Calle y n&uacute;mero">
+              </div>
+              <div class="form-group">
+                <label>Localidad</label>
+                <input type="text" id="dato-localidad" maxlength="120">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>C&oacute;digo Postal</label>
+                <input type="text" id="dato-codigo-postal" maxlength="20">
+              </div>
+              <div class="form-group">
+                <label>Provincia</label>
+                <select id="dato-provincia"></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Pa&iacute;s</label>
+                <select id="dato-pais" onchange="toggleOtroPais('pais')"></select>
+                <input type="text" id="dato-pais-otro" class="hidden campo-otro" maxlength="100" placeholder="Escriba el pa&iacute;s">
+              </div>
+              <div class="form-group">
+                <label>Obra Social</label>
+                <select id="dato-obra-social">
+                  <option value="">Seleccionar...</option>
+                  <option value="SI">SI</option>
+                  <option value="NO">NO</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Carnet y estudios -->
+            <h4 class="datos-seccion">Carnet de conducir y estudios</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Carnet de Conducci&oacute;n</label>
+                <select id="dato-carnet-conducir" onchange="toggleCarnetConducir()">
+                  <option value="">Seleccionar...</option>
+                  <option value="SI">SI</option>
+                  <option value="NO">NO</option>
+                </select>
+              </div>
+              <div class="form-group"></div>
+            </div>
+            <div id="carnet-detalle" class="hidden">
+              <div class="form-group">
+                <label>Clases del carnet (Argentina)</label>
+                <div id="carnet-clases" class="checkbox-grid"></div>
+              </div>
+              <div class="form-group">
+                <label>Comentario</label>
+                <textarea id="dato-carnet-comentario" rows="3" placeholder="Observaciones sobre el carnet (vencimiento, restricciones, etc.)"></textarea>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nivel de Estudio</label>
+                <select id="dato-nivel-estudio">
+                  <option value="">Seleccionar...</option>
+                  <option value="Primario">Primario</option>
+                  <option value="Secundario Incompleto">Secundario Incompleto</option>
+                  <option value="Secundario Completo">Secundario Completo</option>
+                  <option value="Terciario Completo">Terciario Completo</option>
+                  <option value="Universitario Completo">Universitario Completo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Profesi&oacute;n</label>
+                <input type="text" id="dato-profesion" maxlength="120">
+              </div>
+            </div>
+
+            <!-- Grupo familiar -->
+            <h4 class="datos-seccion">Grupo familiar</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Apellido del C&oacute;nyuge</label>
+                <input type="text" id="dato-apellido-conyuge" maxlength="150">
+              </div>
+              <div class="form-group">
+                <label>Nombre del C&oacute;nyuge</label>
+                <input type="text" id="dato-nombre-conyuge" maxlength="150">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Cantidad de Hijos</label>
+                <input type="number" id="dato-cantidad-hijos" min="0" max="99" step="1" value="0">
+              </div>
+              <div class="form-group"></div>
+            </div>
+
+            <!-- Datos bancarios -->
+            <h4 class="datos-seccion">Datos bancarios</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Banco</label>
+                <input type="text" id="dato-banco" maxlength="120">
+              </div>
+              <div class="form-group">
+                <label>CBU</label>
+                <input type="text" id="dato-cbu" maxlength="30" placeholder="22 d&iacute;gitos">
+              </div>
+            </div>
+
+            <!-- Beneficiarios del seguro -->
+            <h4 class="datos-seccion">Beneficiarios del Seguro</h4>
+            <div class="table-responsive">
+              <table class="tabla-beneficiarios">
+                <thead>
+                  <tr>
+                    <th>Apellido y Nombre</th>
+                    <th>Parentesco</th>
+                    <th>DNI</th>
+                    <th>Porcentaje</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-beneficiarios"></tbody>
+              </table>
+            </div>
+            <div class="beneficiarios-footer">
+              <button type="button" class="btn btn-outline btn-sm" onclick="agregarBeneficiario()">+ Agregar Beneficiario</button>
+              <span id="beneficiarios-total" class="beneficiarios-total"></span>
+            </div>
+
+            <!-- Contacto -->
+            <h4 class="datos-seccion">Contacto</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Tel. Fijo</label>
+                <input type="text" id="dato-tel-fijo" maxlength="50">
+              </div>
+              <div class="form-group">
+                <label>Celular Empleado</label>
+                <input type="text" id="dato-celular-empleado" maxlength="50">
+              </div>
+              <div class="form-group">
+                <label>Celular C&oacute;nyuge</label>
+                <input type="text" id="dato-celular-conyuge" maxlength="50">
+              </div>
+            </div>
+
+            <!-- Ropa de trabajo -->
+            <h4 class="datos-seccion">Ropa de Trabajo (Talles)</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Camisa</label>
+                <input type="text" id="dato-talle-camisa" maxlength="20">
+              </div>
+              <div class="form-group">
+                <label>Pantal&oacute;n</label>
+                <input type="text" id="dato-talle-pantalon" maxlength="20">
+              </div>
+              <div class="form-group">
+                <label>Zapato</label>
+                <input type="text" id="dato-talle-zapato" maxlength="20">
+              </div>
+              <div class="form-group">
+                <label>Mameluco</label>
+                <input type="text" id="dato-talle-mameluco" maxlength="20">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Guardar Datos</button>
+              <button type="button" class="btn btn-outline" onclick="cargarMisDatos()">Descartar Cambios</button>
+            </div>
+            <p class="firma-fecha-guardada" id="datos-fecha-texto"></p>
+          </form>
         </div>
       </div>
     </div>

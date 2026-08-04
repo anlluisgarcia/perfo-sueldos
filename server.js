@@ -202,6 +202,9 @@ app.delete('/api/admin/empleados/:id', authAdmin, async (req, res) => {
     const db = getDb();
     await db.run('DELETE FROM firmas_recibos WHERE empleado_id = ?', [req.params.id]);
     await db.run('DELETE FROM firmas_empleados WHERE empleado_id = ?', [req.params.id]);
+    await db.run('DELETE FROM empleados_beneficiarios WHERE empleado_id = ?', [req.params.id]);
+    await db.run('DELETE FROM empleados_datos WHERE empleado_id = ?', [req.params.id]);
+    await db.run('DELETE FROM descargas_recibos WHERE empleado_id = ?', [req.params.id]);
     await db.run('DELETE FROM recibos WHERE empleado_id = ?', [req.params.id]);
     await db.run('DELETE FROM empleados WHERE id = ?', [req.params.id]);
     res.json({ message: 'Empleado eliminado exitosamente' });
@@ -659,6 +662,128 @@ app.get('/api/empleado/perfil', authEmpleado, async (req, res) => {
   } catch (err) {
     console.error('Perfil error:', err);
     res.status(500).json({ error: 'Error al obtener perfil' });
+  }
+});
+
+// ==================== EMPLEADO - MIS DATOS ====================
+
+// Campos de la ficha personal, en el mismo orden que se insertan/actualizan.
+const CAMPOS_DATOS = [
+  'apellidos', 'nombres', 'email', 'estado_civil', 'cuit', 'fecha_nacimiento', 'sexo',
+  'grupo_sanguineo', 'nacionalidad', 'domicilio', 'localidad', 'codigo_postal', 'provincia',
+  'pais', 'obra_social', 'carnet_conducir', 'carnet_clases', 'carnet_comentario',
+  'nivel_estudio', 'profesion', 'apellido_conyuge', 'nombre_conyuge', 'cantidad_hijos',
+  'banco', 'cbu', 'tel_fijo', 'celular_empleado', 'celular_conyuge',
+  'talle_camisa', 'talle_pantalon', 'talle_zapato', 'talle_mameluco'
+];
+
+const MAX_BENEFICIARIOS = 20;
+
+function normalizarCampoDato(campo, valor) {
+  if (campo === 'fecha_nacimiento') {
+    const v = (valor || '').toString().trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+  }
+  if (campo === 'cantidad_hijos') {
+    const n = parseInt(valor, 10);
+    return Number.isFinite(n) && n >= 0 ? Math.min(n, 99) : 0;
+  }
+  return (valor === undefined || valor === null) ? '' : String(valor).trim();
+}
+
+app.get('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
+  try {
+    const db = getDb();
+    const empResult = await db.exec('SELECT nombre, dni FROM empleados WHERE id = ?', [req.user.id]);
+    if (empResult.length === 0 || empResult[0].values.length === 0) {
+      return res.status(404).json({ error: 'Empleado no encontrado' });
+    }
+    const [nombre, dni] = empResult[0].values[0];
+
+    const datosResult = await db.exec('SELECT * FROM empleados_datos WHERE empleado_id = ?', [req.user.id]);
+    let datos = null;
+    if (datosResult.length > 0 && datosResult[0].values.length > 0) {
+      datos = {};
+      datosResult[0].columns.forEach((col, i) => datos[col] = datosResult[0].values[0][i]);
+    }
+
+    const benefResult = await db.exec(
+      'SELECT apellido_nombre, parentesco, dni, porcentaje FROM empleados_beneficiarios WHERE empleado_id = ? ORDER BY id',
+      [req.user.id]
+    );
+    const beneficiarios = (benefResult.length === 0) ? [] : benefResult[0].values.map(row => {
+      const obj = {};
+      benefResult[0].columns.forEach((col, i) => obj[col] = row[i]);
+      return obj;
+    });
+
+    res.json({ nombre, dni, datos, beneficiarios });
+  } catch (err) {
+    console.error('Mis datos GET error:', err);
+    res.status(500).json({ error: 'Error al obtener sus datos' });
+  }
+});
+
+app.post('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
+  try {
+    const beneficiarios = Array.isArray(req.body.beneficiarios) ? req.body.beneficiarios : [];
+    if (beneficiarios.length > MAX_BENEFICIARIOS) {
+      return res.status(400).json({ error: `No puede cargar mas de ${MAX_BENEFICIARIOS} beneficiarios` });
+    }
+
+    const email = (req.body.email || '').trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'El email no tiene un formato valido' });
+    }
+
+    // Solo se guardan los beneficiarios con nombre; el resto de la fila se descarta.
+    const benefLimpios = [];
+    for (const b of beneficiarios) {
+      const apellidoNombre = (b.apellido_nombre || '').toString().trim();
+      if (!apellidoNombre) continue;
+      const porcentaje = parseFloat(b.porcentaje);
+      if (b.porcentaje !== '' && b.porcentaje !== undefined && b.porcentaje !== null) {
+        if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+          return res.status(400).json({ error: 'El porcentaje de cada beneficiario debe estar entre 0 y 100' });
+        }
+      }
+      benefLimpios.push({
+        apellido_nombre: apellidoNombre.slice(0, 200),
+        parentesco: (b.parentesco || '').toString().trim().slice(0, 60),
+        dni: (b.dni || '').toString().trim().slice(0, 20),
+        porcentaje: Number.isFinite(porcentaje) ? porcentaje : 0
+      });
+    }
+
+    const totalPorcentaje = benefLimpios.reduce((acc, b) => acc + b.porcentaje, 0);
+    if (totalPorcentaje > 100) {
+      return res.status(400).json({ error: 'La suma de los porcentajes de los beneficiarios no puede superar 100%' });
+    }
+
+    const valores = CAMPOS_DATOS.map(c => normalizarCampoDato(c, req.body[c]));
+    const columnas = ['empleado_id', ...CAMPOS_DATOS];
+    const placeholders = columnas.map(() => '?').join(', ');
+    const asignaciones = CAMPOS_DATOS.map(c => `${c} = ?`).join(', ');
+
+    const db = getDb();
+    await db.run(
+      `INSERT INTO empleados_datos (${columnas.join(', ')}) VALUES (${placeholders})
+       ON DUPLICATE KEY UPDATE ${asignaciones}`,
+      [req.user.id, ...valores, ...valores]
+    );
+
+    await db.run('DELETE FROM empleados_beneficiarios WHERE empleado_id = ?', [req.user.id]);
+    for (const b of benefLimpios) {
+      await db.run(
+        'INSERT INTO empleados_beneficiarios (empleado_id, apellido_nombre, parentesco, dni, porcentaje) VALUES (?, ?, ?, ?, ?)',
+        [req.user.id, b.apellido_nombre, b.parentesco, b.dni, b.porcentaje]
+      );
+    }
+
+    res.json({ message: 'Datos guardados exitosamente' });
+  } catch (err) {
+    console.error('Mis datos POST error:', err);
+    res.status(500).json({ error: 'Error al guardar sus datos' });
   }
 });
 

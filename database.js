@@ -117,6 +117,64 @@ async function ensureSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // empleados_datos (ficha personal que completa el propio empleado)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS empleados_datos (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      empleado_id INT NOT NULL UNIQUE,
+      apellidos VARCHAR(150) NOT NULL DEFAULT '',
+      nombres VARCHAR(150) NOT NULL DEFAULT '',
+      email VARCHAR(150) NOT NULL DEFAULT '',
+      estado_civil VARCHAR(30) NOT NULL DEFAULT '',
+      cuit VARCHAR(20) NOT NULL DEFAULT '',
+      fecha_nacimiento DATE NULL,
+      sexo VARCHAR(20) NOT NULL DEFAULT '',
+      grupo_sanguineo VARCHAR(10) NOT NULL DEFAULT '',
+      nacionalidad VARCHAR(100) NOT NULL DEFAULT '',
+      domicilio VARCHAR(200) NOT NULL DEFAULT '',
+      localidad VARCHAR(120) NOT NULL DEFAULT '',
+      codigo_postal VARCHAR(20) NOT NULL DEFAULT '',
+      provincia VARCHAR(100) NOT NULL DEFAULT '',
+      pais VARCHAR(100) NOT NULL DEFAULT '',
+      obra_social VARCHAR(5) NOT NULL DEFAULT '',
+      carnet_conducir VARCHAR(5) NOT NULL DEFAULT '',
+      carnet_clases VARCHAR(120) NOT NULL DEFAULT '',
+      carnet_comentario TEXT,
+      nivel_estudio VARCHAR(60) NOT NULL DEFAULT '',
+      profesion VARCHAR(120) NOT NULL DEFAULT '',
+      apellido_conyuge VARCHAR(150) NOT NULL DEFAULT '',
+      nombre_conyuge VARCHAR(150) NOT NULL DEFAULT '',
+      cantidad_hijos INT NOT NULL DEFAULT 0,
+      banco VARCHAR(120) NOT NULL DEFAULT '',
+      cbu VARCHAR(30) NOT NULL DEFAULT '',
+      tel_fijo VARCHAR(50) NOT NULL DEFAULT '',
+      celular_empleado VARCHAR(50) NOT NULL DEFAULT '',
+      celular_conyuge VARCHAR(50) NOT NULL DEFAULT '',
+      talle_camisa VARCHAR(20) NOT NULL DEFAULT '',
+      talle_pantalon VARCHAR(20) NOT NULL DEFAULT '',
+      talle_zapato VARCHAR(20) NOT NULL DEFAULT '',
+      talle_mameluco VARCHAR(20) NOT NULL DEFAULT '',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_datos_emp FOREIGN KEY (empleado_id) REFERENCES empleados(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  // empleados_beneficiarios (beneficiarios del seguro, varios por empleado)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS empleados_beneficiarios (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      empleado_id INT NOT NULL,
+      apellido_nombre VARCHAR(200) NOT NULL,
+      parentesco VARCHAR(60) NOT NULL DEFAULT '',
+      dni VARCHAR(20) NOT NULL DEFAULT '',
+      porcentaje DECIMAL(5,2) NOT NULL DEFAULT 0,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_benef_emp (empleado_id),
+      CONSTRAINT fk_benef_emp FOREIGN KEY (empleado_id) REFERENCES empleados(id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   // firma_admin (fila única id=1)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS firma_admin (
