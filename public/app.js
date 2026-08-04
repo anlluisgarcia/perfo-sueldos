@@ -218,6 +218,7 @@ function switchAdminTab(tab) {
   document.querySelector(`.admin-tab[onclick*="${tab}"]`).classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
 
+  if (tab === 'fichas') cargarFichas();
   if (tab === 'firmas') cargarFirmasAdmin();
   if (tab === 'recibos') cargarSelectEmpleados();
   if (tab === 'historial') cargarHistorialRecibos();
@@ -250,6 +251,7 @@ function renderEmpleados(empleados) {
       <td>${emp.direccion || '-'}</td>
       <td><span class="badge ${emp.estado === 'activo' ? 'badge-success' : 'badge-danger'}">${emp.estado}</span></td>
       <td>
+        <button class="btn btn-outline btn-sm" onclick="verDatosEmpleado(${emp.id})">Ver Datos</button>
         <button class="btn btn-outline btn-sm" onclick="editarEmpleado(${emp.id})">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="confirmarEliminarEmpleado(${emp.id}, '${emp.nombre}')">Eliminar</button>
       </td>
@@ -362,6 +364,224 @@ function confirmarEliminarEmpleado(id, nombre) {
 
 function cerrarModal() {
   document.getElementById('modal-confirm').classList.add('hidden');
+}
+
+// ==================== ADMIN - VER DATOS DEL EMPLEADO ====================
+// Vista de solo lectura de la ficha que el empleado completa en "Mis Datos".
+const SECCIONES_DATOS = [
+  ['Datos personales', [
+    ['Apellidos', 'apellidos'], ['Nombres', 'nombres'], ['Email', 'email'],
+    ['Estado Civil', 'estado_civil'], ['DNI', 'dni'], ['CUIT', 'cuit'],
+    ['Fecha de Nacimiento', 'fecha_nacimiento'], ['Sexo', 'sexo'],
+    ['Grupo Sanguíneo', 'grupo_sanguineo'], ['Nacionalidad', 'nacionalidad']
+  ]],
+  ['Domicilio', [
+    ['Domicilio', 'domicilio'], ['Localidad', 'localidad'],
+    ['Código Postal', 'codigo_postal'], ['Provincia', 'provincia'],
+    ['País', 'pais'], ['Obra Social', 'obra_social']
+  ]],
+  ['Carnet de conducir y estudios', [
+    ['Carnet de Conducción', 'carnet_conducir'], ['Clases', 'carnet_clases'],
+    ['Comentario', 'carnet_comentario'], ['Nivel de Estudio', 'nivel_estudio'],
+    ['Profesión', 'profesion']
+  ]],
+  ['Grupo familiar', [
+    ['Apellido del Cónyuge', 'apellido_conyuge'], ['Nombre del Cónyuge', 'nombre_conyuge'],
+    ['Cantidad de Hijos', 'cantidad_hijos']
+  ]],
+  ['Datos bancarios', [['Banco', 'banco'], ['CBU', 'cbu']]],
+  ['Contacto', [
+    ['Tel. Fijo', 'tel_fijo'], ['Celular Empleado', 'celular_empleado'],
+    ['Celular Cónyuge', 'celular_conyuge']
+  ]],
+  ['Ropa de Trabajo (Talles)', [
+    ['Camisa', 'talle_camisa'], ['Pantalón', 'talle_pantalon'],
+    ['Zapato', 'talle_zapato'], ['Mameluco', 'talle_mameluco']
+  ]]
+];
+
+function formatFechaCorta(fecha) {
+  if (!fecha) return '';
+  const partes = String(fecha).substring(0, 10).split('-');
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : fecha;
+}
+
+async function verDatosEmpleado(id) {
+  const modal = document.getElementById('modal-datos-empleado');
+  const cuerpo = document.getElementById('modal-datos-cuerpo');
+  cuerpo.innerHTML = '<p class="datos-cargando">Cargando...</p>';
+  document.getElementById('modal-datos-subtitulo').textContent = '';
+  modal.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${API}/api/admin/empleados/${id}/datos`, { headers: headersAuth() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al obtener los datos');
+
+    document.getElementById('modal-datos-subtitulo').textContent =
+      `${data.nombre} · DNI ${data.dni}${data.empresa ? ' · ' + data.empresa : ''}`;
+
+    if (!data.datos) {
+      cuerpo.innerHTML = '<div class="info-box">El empleado a&uacute;n no complet&oacute; su ficha de datos personales.</div>';
+      return;
+    }
+
+    // El DNI se toma del alta de usuario, no de la ficha.
+    const d = Object.assign({}, data.datos, { dni: data.dni });
+    d.fecha_nacimiento = formatFechaCorta(d.fecha_nacimiento);
+
+    let html = SECCIONES_DATOS.map(([titulo, campos]) => `
+      <h4 class="datos-seccion">${titulo}</h4>
+      <div class="datos-grid">
+        ${campos.map(([etiqueta, campo]) => `
+          <div class="datos-item">
+            <span class="datos-label">${etiqueta}</span>
+            <span class="datos-valor">${escAttr(d[campo] !== null && d[campo] !== undefined && d[campo] !== '' ? d[campo] : '-')}</span>
+          </div>`).join('')}
+      </div>`).join('');
+
+    const benef = data.beneficiarios || [];
+    html += '<h4 class="datos-seccion">Beneficiarios del Seguro</h4>';
+    if (benef.length === 0) {
+      html += '<p class="datos-vacio">Sin beneficiarios cargados.</p>';
+    } else {
+      const total = benef.reduce((acc, b) => acc + (parseFloat(b.porcentaje) || 0), 0);
+      html += `
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr><th>Apellido y Nombre</th><th>Parentesco</th><th>DNI</th><th>Porcentaje</th></tr>
+            </thead>
+            <tbody>
+              ${benef.map(b => `
+                <tr>
+                  <td>${escAttr(b.apellido_nombre)}</td>
+                  <td>${escAttr(b.parentesco || '-')}</td>
+                  <td>${escAttr(b.dni || '-')}</td>
+                  <td>${(parseFloat(b.porcentaje) || 0).toFixed(2)}%</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p class="beneficiarios-total" style="margin-top:10px">Total asignado: ${total.toFixed(2)}%</p>`;
+    }
+
+    if (d.updated_at) {
+      html += `<p class="firma-fecha-guardada">Ultima actualizacion: ${new Date(d.updated_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>`;
+    }
+
+    cuerpo.innerHTML = html;
+  } catch (err) {
+    cuerpo.innerHTML = `<div class="info-box">${escAttr(err.message)}</div>`;
+  }
+}
+
+function cerrarModalDatosEmpleado() {
+  document.getElementById('modal-datos-empleado').classList.add('hidden');
+}
+
+// ==================== ADMIN - LISTADO DE FICHAS ====================
+// Las empresas son las mismas que se usan para los recibos de sueldo.
+const EMPRESAS = ['BTZ MINERA', 'PERFORACIONES IGLESIANAS'];
+let fichasCache = [];
+
+async function cargarFichas() {
+  try {
+    const res = await fetch(`${API}/api/admin/fichas`, { headers: headersAuth() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al listar las fichas');
+    fichasCache = data;
+    filtrarFichas();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function nombreFicha(f) {
+  const completo = `${f.apellidos || ''} ${f.nombres || ''}`.trim();
+  return completo || f.nombre || '-';
+}
+
+function renderFichas(fichas) {
+  const tbody = document.getElementById('tabla-fichas');
+  if (fichas.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray-500);padding:40px">No hay empleados que coincidan con el filtro</td></tr>';
+    return;
+  }
+  tbody.innerHTML = fichas.map(f => `
+    <tr>
+      <td><strong>${escAttr(nombreFicha(f))}</strong></td>
+      <td>${escAttr(f.dni)}</td>
+      <td>${escAttr(f.cuit || '-')}</td>
+      <td>${escAttr(f.email || '-')}</td>
+      <td>${escAttr(f.celular_empleado || '-')}</td>
+      <td>${escAttr(f.localidad || '-')}</td>
+      <td>
+        <select class="select-empresa" onchange="asignarEmpresaFicha(${f.id}, this)">
+          <option value=""${!f.empresa ? ' selected' : ''}>Sin asignar</option>
+          ${EMPRESAS.map(e => `<option value="${escAttr(e)}"${f.empresa === e ? ' selected' : ''}>${escAttr(e)}</option>`).join('')}
+        </select>
+      </td>
+      <td><span class="badge ${f.tiene_ficha ? 'badge-success' : 'badge-warning'}">${f.tiene_ficha ? 'Cargada' : 'Pendiente'}</span></td>
+      <td><button class="btn btn-outline btn-sm" onclick="verDatosEmpleado(${f.id})">Ver Datos</button></td>
+    </tr>
+  `).join('');
+}
+
+function filtrarFichas() {
+  const q = document.getElementById('buscar-ficha').value.toLowerCase().trim();
+  const empresa = document.getElementById('filtro-empresa-fichas').value;
+  const estadoFicha = document.getElementById('filtro-estado-ficha').value;
+
+  const filtradas = fichasCache.filter(f => {
+    const texto = `${nombreFicha(f)} ${f.nombre || ''} ${f.dni || ''} ${f.cuit || ''}`.toLowerCase();
+    const coincideTexto = !q || texto.includes(q);
+    const coincideEmpresa = !empresa
+      || (empresa === '__sin__' ? !f.empresa : f.empresa === empresa);
+    const coincideFicha = !estadoFicha
+      || (estadoFicha === 'completa' ? !!f.tiene_ficha : !f.tiene_ficha);
+    return coincideTexto && coincideEmpresa && coincideFicha;
+  });
+  renderFichas(filtradas);
+}
+
+function limpiarFiltroFichas() {
+  document.getElementById('buscar-ficha').value = '';
+  document.getElementById('filtro-empresa-fichas').value = '';
+  document.getElementById('filtro-estado-ficha').value = '';
+  filtrarFichas();
+}
+
+async function asignarEmpresaFicha(id, select) {
+  const ficha = fichasCache.find(f => f.id === id);
+  const anterior = ficha ? (ficha.empresa || '') : '';
+  const empresa = select.value;
+  select.disabled = true;
+  try {
+    const res = await fetch(`${API}/api/admin/empleados/${id}/empresa`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ empresa })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    if (ficha) ficha.empresa = empresa;
+    const emp = empleadosCache.find(e => e.id === id);
+    if (emp) emp.empresa = empresa;
+
+    showToast(data.message);
+    // La empresa tambien alimenta el modulo de empleados y los recibos de sueldo,
+    // asi que se refrescan sin perder los filtros que el admin tenga puestos.
+    filtrarEmpleados();
+    filtrarSelectEmpleados();
+    cargarHistorialRecibos();
+  } catch (err) {
+    select.value = anterior;
+    showToast(err.message, 'error');
+  } finally {
+    select.disabled = false;
+  }
 }
 
 // ==================== RECIBOS UPLOAD ====================

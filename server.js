@@ -214,6 +214,95 @@ app.delete('/api/admin/empleados/:id', authAdmin, async (req, res) => {
   }
 });
 
+// Empresas habilitadas. Es el mismo valor que viaja en empleados.empresa y por el
+// que se filtran los recibos de sueldo, asi que hay una sola fuente de verdad.
+const EMPRESAS = ['BTZ MINERA', 'PERFORACIONES IGLESIANAS'];
+
+// Listado de fichas personales de todos los empleados (una fila por empleado).
+app.get('/api/admin/fichas', authAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.exec(`
+      SELECT e.id, e.nombre, e.dni, e.empresa, e.estado,
+             d.apellidos, d.nombres, d.email, d.cuit, d.fecha_nacimiento, d.estado_civil,
+             d.celular_empleado, d.tel_fijo, d.localidad, d.provincia, d.obra_social,
+             d.carnet_conducir, d.banco, d.cbu, d.updated_at,
+             CASE WHEN d.id IS NOT NULL THEN 1 ELSE 0 END AS tiene_ficha,
+             (SELECT COUNT(*) FROM empleados_beneficiarios b WHERE b.empleado_id = e.id) AS beneficiarios,
+             (SELECT COUNT(*) FROM recibos r WHERE r.empleado_id = e.id) AS recibos
+      FROM empleados e
+      LEFT JOIN empleados_datos d ON d.empleado_id = e.id
+      ORDER BY e.nombre
+    `);
+    if (result.length === 0) return res.json([]);
+    const columns = result[0].columns;
+    const fichas = result[0].values.map(row => {
+      const obj = {};
+      columns.forEach((col, i) => obj[col] = row[i]);
+      return obj;
+    });
+    res.json(fichas);
+  } catch (err) {
+    console.error('Listar fichas error:', err);
+    res.status(500).json({ error: 'Error al listar las fichas de empleados' });
+  }
+});
+
+// Asigna la empresa del empleado. Es el mismo campo que usan los recibos de sueldo,
+// por lo que el cambio se refleja en el historial y en los filtros por empresa.
+app.put('/api/admin/empleados/:id/empresa', authAdmin, async (req, res) => {
+  try {
+    const empresa = (req.body.empresa || '').trim();
+    if (empresa && !EMPRESAS.includes(empresa)) {
+      return res.status(400).json({ error: 'Empresa invalida' });
+    }
+    const db = getDb();
+    const existe = await db.exec('SELECT id FROM empleados WHERE id = ?', [req.params.id]);
+    if (existe.length === 0 || existe[0].values.length === 0) {
+      return res.status(404).json({ error: 'Empleado no encontrado' });
+    }
+    await db.run('UPDATE empleados SET empresa = ? WHERE id = ?', [empresa, req.params.id]);
+    res.json({ message: empresa ? `Empresa asignada: ${empresa}` : 'Empresa quitada' });
+  } catch (err) {
+    console.error('Asignar empresa error:', err);
+    res.status(500).json({ error: 'Error al asignar la empresa' });
+  }
+});
+
+// Ficha personal de un empleado, en modo consulta para el administrador.
+app.get('/api/admin/empleados/:id/datos', authAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const empResult = await db.exec('SELECT nombre, dni, empresa FROM empleados WHERE id = ?', [req.params.id]);
+    if (empResult.length === 0 || empResult[0].values.length === 0) {
+      return res.status(404).json({ error: 'Empleado no encontrado' });
+    }
+    const [nombre, dni, empresa] = empResult[0].values[0];
+
+    const datosResult = await db.exec('SELECT * FROM empleados_datos WHERE empleado_id = ?', [req.params.id]);
+    let datos = null;
+    if (datosResult.length > 0 && datosResult[0].values.length > 0) {
+      datos = {};
+      datosResult[0].columns.forEach((col, i) => datos[col] = datosResult[0].values[0][i]);
+    }
+
+    const benefResult = await db.exec(
+      'SELECT apellido_nombre, parentesco, dni, porcentaje FROM empleados_beneficiarios WHERE empleado_id = ? ORDER BY id',
+      [req.params.id]
+    );
+    const beneficiarios = (benefResult.length === 0) ? [] : benefResult[0].values.map(row => {
+      const obj = {};
+      benefResult[0].columns.forEach((col, i) => obj[col] = row[i]);
+      return obj;
+    });
+
+    res.json({ nombre, dni, empresa, datos, beneficiarios });
+  } catch (err) {
+    console.error('Datos empleado (admin) error:', err);
+    res.status(500).json({ error: 'Error al obtener los datos del empleado' });
+  }
+});
+
 // ==================== RUTAS ADMIN - RECIBOS ====================
 
 async function estamparFirmaAdmin(filePath, empresa) {
