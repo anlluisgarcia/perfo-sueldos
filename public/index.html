@@ -208,7 +208,7 @@
           <p class="firma-descripcion">Ficha personal que carga cada empleado desde su portal. La empresa asignada aqu&iacute; se aplica a los recibos que se suban de aqu&iacute; en m&aacute;s; los ya cargados conservan la empresa que ten&iacute;an al subirse.</p>
 
           <div style="display:flex;gap:10px;align-items:center;margin:16px 0;flex-wrap:wrap">
-            <input type="text" id="buscar-ficha" class="buscador-alto" placeholder="Buscar por nombre, DNI o CUIT..." oninput="filtrarFichas()" style="flex:1;max-width:350px">
+            <input type="text" id="buscar-ficha" class="filtro-texto" placeholder="Buscar por nombre, DNI o CUIT..." oninput="filtrarFichas()" style="flex:1;max-width:350px">
             <select id="filtro-empresa-fichas" onchange="filtrarFichas()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
               <option value="">Todas las empresas</option>
               <option value="BTZ MINERA">BTZ MINERA</option>
@@ -230,7 +230,7 @@
                   <th>Apellido y Nombre</th>
                   <th>DNI</th>
                   <th>Celular</th>
-                  <th>Localidad</th>
+                  <th>Provincia</th>
                   <th>Empresa</th>
                   <th>Ficha</th>
                   <th>Acciones</th>
@@ -704,10 +704,10 @@
                 <label>Estado Civil</label>
                 <select id="dato-estado-civil">
                   <option value="">Seleccionar...</option>
-                  <option value="Soltero">Soltero</option>
-                  <option value="Casado">Casado</option>
-                  <option value="Viudo">Viudo</option>
-                  <option value="Divorciado">Divorciado</option>
+                  <option value="SOLTERO">SOLTERO</option>
+                  <option value="CASADO">CASADO</option>
+                  <option value="VIUDO">VIUDO</option>
+                  <option value="DIVORCIADO">DIVORCIADO</option>
                 </select>
               </div>
             </div>
@@ -730,9 +730,9 @@
                 <label>Sexo</label>
                 <select id="dato-sexo">
                   <option value="">Seleccionar...</option>
-                  <option value="Femenino">Femenino</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Otro">Otro</option>
+                  <option value="FEMENINO">FEMENINO</option>
+                  <option value="MASCULINO">MASCULINO</option>
+                  <option value="OTRO">OTRO</option>
                 </select>
               </div>
             </div>
@@ -802,7 +802,7 @@
             <div id="carnet-detalle" class="hidden">
               <div class="form-group">
                 <label>Clases del carnet (Argentina)</label>
-                <div id="carnet-clases" class="checkbox-grid"></div>
+                <div id="carnet-clases"></div>
               </div>
               <div class="form-group">
                 <label>Comentario</label>
@@ -814,11 +814,11 @@
                 <label>Nivel de Estudio</label>
                 <select id="dato-nivel-estudio">
                   <option value="">Seleccionar...</option>
-                  <option value="Primario">Primario</option>
-                  <option value="Secundario Incompleto">Secundario Incompleto</option>
-                  <option value="Secundario Completo">Secundario Completo</option>
-                  <option value="Terciario Completo">Terciario Completo</option>
-                  <option value="Universitario Completo">Universitario Completo</option>
+                  <option value="PRIMARIO">PRIMARIO</option>
+                  <option value="SECUNDARIO INCOMPLETO">SECUNDARIO INCOMPLETO</option>
+                  <option value="SECUNDARIO COMPLETO">SECUNDARIO COMPLETO</option>
+                  <option value="TERCIARIO COMPLETO">TERCIARIO COMPLETO</option>
+                  <option value="UNIVERSITARIO COMPLETO">UNIVERSITARIO COMPLETO</option>
                 </select>
               </div>
               <div class="form-group">

@@ -6,41 +6,117 @@ let empleadosCache = [];
 // ==================== CATALOGOS ====================
 // Los usan tanto el formulario del empleado como la ficha que edita el admin.
 
+// Van en MAYUSCULA para que coincidan con como el servidor guarda los datos.
 // Argentina va primero por ser el caso mas frecuente; el resto en orden alfabetico.
 const PAISES_AMERICA = [
-  'Argentina', 'Antigua y Barbuda', 'Bahamas', 'Barbados', 'Belice', 'Bolivia', 'Brasil',
-  'Canadá', 'Chile', 'Colombia', 'Costa Rica', 'Cuba', 'Dominica', 'Ecuador',
-  'El Salvador', 'Estados Unidos', 'Granada', 'Guatemala', 'Guyana', 'Haití', 'Honduras',
-  'Jamaica', 'México', 'Nicaragua', 'Panamá', 'Paraguay', 'Perú',
-  'República Dominicana', 'San Cristóbal y Nieves', 'San Vicente y las Granadinas',
-  'Santa Lucía', 'Surinam', 'Trinidad y Tobago', 'Uruguay', 'Venezuela'
+  'ARGENTINA', 'ANTIGUA Y BARBUDA', 'BAHAMAS', 'BARBADOS', 'BELICE', 'BOLIVIA', 'BRASIL',
+  'CANADÁ', 'CHILE', 'COLOMBIA', 'COSTA RICA', 'CUBA', 'DOMINICA', 'ECUADOR',
+  'EL SALVADOR', 'ESTADOS UNIDOS', 'GRANADA', 'GUATEMALA', 'GUYANA', 'HAITÍ', 'HONDURAS',
+  'JAMAICA', 'MÉXICO', 'NICARAGUA', 'PANAMÁ', 'PARAGUAY', 'PERÚ',
+  'REPÚBLICA DOMINICANA', 'SAN CRISTÓBAL Y NIEVES', 'SAN VICENTE Y LAS GRANADINAS',
+  'SANTA LUCÍA', 'SURINAM', 'TRINIDAD Y TOBAGO', 'URUGUAY', 'VENEZUELA'
 ];
 
 const PROVINCIAS_ARG = [
-  'Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Catamarca', 'Chaco', 'Chubut',
-  'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
-  'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis',
-  'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'
+  'BUENOS AIRES', 'CIUDAD AUTÓNOMA DE BUENOS AIRES', 'CATAMARCA', 'CHACO', 'CHUBUT',
+  'CÓRDOBA', 'CORRIENTES', 'ENTRE RÍOS', 'FORMOSA', 'JUJUY', 'LA PAMPA', 'LA RIOJA',
+  'MENDOZA', 'MISIONES', 'NEUQUÉN', 'RÍO NEGRO', 'SALTA', 'SAN JUAN', 'SAN LUIS',
+  'SANTA CRUZ', 'SANTA FE', 'SANTIAGO DEL ESTERO', 'TIERRA DEL FUEGO', 'TUCUMÁN'
 ];
 
 const GRUPOS_SANGUINEOS = ['0-', '0+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
 
 const NIVELES_ESTUDIO = [
-  'Primario', 'Secundario Incompleto', 'Secundario Completo',
-  'Terciario Completo', 'Universitario Completo'
+  'PRIMARIO', 'SECUNDARIO INCOMPLETO', 'SECUNDARIO COMPLETO',
+  'TERCIARIO COMPLETO', 'UNIVERSITARIO COMPLETO'
 ];
 
+// Categorias de la licencia nacional de conducir (Ley 24.449 / CENAT).
+// Las clases C, D y E son profesionales.
 const CLASES_CARNET = [
-  { valor: 'A', texto: 'A - Motocicletas y ciclomotores' },
-  { valor: 'B', texto: 'B - Automóviles y camionetas' },
-  { valor: 'C', texto: 'C - Camiones sin acoplado' },
-  { valor: 'D', texto: 'D - Servicio de transporte de pasajeros' },
-  { valor: 'E', texto: 'E - Camiones con acoplado y maquinaria especial' },
-  { valor: 'F', texto: 'F - Vehículos adaptados para personas con discapacidad' },
-  { valor: 'G', texto: 'G - Tractores y maquinaria agrícola' }
+  { grupo: 'Clase A - Motovehículos', items: [
+    { valor: 'A1.1', texto: 'A1.1 - Ciclomotores hasta 50 cc, transmisión automática' },
+    { valor: 'A1.2', texto: 'A1.2 - Ciclomotores hasta 50 cc' },
+    { valor: 'A1.3', texto: 'A1.3 - Motocicletas hasta 150 cc' },
+    { valor: 'A1.4', texto: 'A1.4 - Motocicletas hasta 300 cc' },
+    { valor: 'A2.1', texto: 'A2.1 - Motocicletas hasta 400 cc' },
+    { valor: 'A2.2', texto: 'A2.2 - Motocicletas de más de 400 cc' },
+    { valor: 'A3', texto: 'A3 - Triciclos y cuatriciclos motorizados' }
+  ]},
+  { grupo: 'Clase B - Automóviles y camionetas', items: [
+    { valor: 'B1', texto: 'B1 - Automóviles, utilitarios, camionetas y casas rodantes hasta 3.500 kg' },
+    { valor: 'B2', texto: 'B2 - B1 con acoplado de hasta 750 kg o casa rodante' }
+  ]},
+  { grupo: 'Clase C - Camiones (Profesional)', items: [
+    { valor: 'C1', texto: 'C1 - Camiones sin acoplado ni semirremolque hasta 12.000 kg' },
+    { valor: 'C2', texto: 'C2 - Camiones sin acoplado ni semirremolque de más de 12.000 kg' },
+    { valor: 'C3', texto: 'C3 - Camiones con acoplado' }
+  ]},
+  { grupo: 'Clase D - Transporte de pasajeros y servicios (Profesional)', items: [
+    { valor: 'D1', texto: 'D1 - Transporte de pasajeros hasta 8 plazas (taxi, remis, escolar, ambulancia)' },
+    { valor: 'D2.1', texto: 'D2.1 - Transporte de pasajeros hasta 20 plazas' },
+    { valor: 'D2.2', texto: 'D2.2 - Transporte de pasajeros de 21 a 35 plazas' },
+    { valor: 'D2.3', texto: 'D2.3 - Transporte de pasajeros de más de 35 plazas' },
+    { valor: 'D3', texto: 'D3 - Servicios de emergencia y seguridad' },
+    { valor: 'D4', texto: 'D4 - Maquinaria especial no agrícola' }
+  ]},
+  { grupo: 'Clase E - Articulados y maquinaria especial (Profesional)', items: [
+    { valor: 'E1', texto: 'E1 - Camiones articulados o con acoplado' },
+    { valor: 'E2', texto: 'E2 - Maquinaria especial no agrícola' }
+  ]},
+  { grupo: 'Clase F - Vehículos adaptados', items: [
+    { valor: 'F', texto: 'F - Vehículos adaptados para personas con discapacidad' }
+  ]},
+  { grupo: 'Clase G - Maquinaria agrícola', items: [
+    { valor: 'G1', texto: 'G1 - Tractores agrícolas' },
+    { valor: 'G2', texto: 'G2 - Maquinaria especial agrícola' },
+    { valor: 'G3', texto: 'G3 - Tractores agrícolas con acoplado' }
+  ]}
 ];
+
+// Render compartido por el formulario del empleado y el del admin, que solo
+// difieren en la clase CSS con la que despues se leen los tildados.
+function checkboxesClasesHTML(claseCss, marcadas) {
+  const seleccion = marcadas || [];
+  let html = CLASES_CARNET.map(g => `
+    <div class="clases-grupo">
+      <span class="clases-grupo-titulo">${escAttr(g.grupo)}</span>
+      <div class="checkbox-grid">
+        ${g.items.map(c => `
+          <label class="checkbox-item">
+            <input type="checkbox" class="${claseCss}" value="${escAttr(c.valor)}"${seleccion.includes(c.valor) ? ' checked' : ''}>
+            <span>${escAttr(c.texto)}</span>
+          </label>`).join('')}
+      </div>
+    </div>`).join('');
+
+  // Las fichas cargadas con el listado anterior guardaron clases genericas (A, B,
+  // C...). Se muestran tildadas aparte para no perder el dato al guardar de nuevo.
+  const conocidas = CLASES_CARNET.flatMap(g => g.items.map(i => i.valor));
+  const viejas = seleccion.filter(v => !conocidas.includes(v));
+  if (viejas.length) {
+    html += `
+      <div class="clases-grupo">
+        <span class="clases-grupo-titulo">Cargado con el listado anterior (actualizar)</span>
+        <div class="checkbox-grid">
+          ${viejas.map(v => `
+            <label class="checkbox-item">
+              <input type="checkbox" class="${claseCss}" value="${escAttr(v)}" checked>
+              <span>${escAttr(v)}</span>
+            </label>`).join('')}
+        </div>
+      </div>`;
+  }
+  return html;
+}
 
 const VALOR_OTRO = '__otro__';
+
+// Los valores guardados antes de la regla de mayusculas siguen matcheando con las
+// opciones de los selects gracias a esta normalizacion al leerlos.
+function mayus(valor) {
+  return (valor === null || valor === undefined) ? '' : String(valor).toUpperCase();
+}
 
 // ==================== UTILIDADES ====================
 function escAttr(valor) {
@@ -435,11 +511,11 @@ const CAMPOS_FICHA = [
     { k: 'apellidos', l: 'Apellidos', t: 'text', max: 150 },
     { k: 'nombres', l: 'Nombres', t: 'text', max: 150 },
     { k: 'email', l: 'Email', t: 'email', max: 150 },
-    { k: 'estado_civil', l: 'Estado Civil', t: 'select', op: ['Soltero', 'Casado', 'Viudo', 'Divorciado'] },
+    { k: 'estado_civil', l: 'Estado Civil', t: 'select', op: ['SOLTERO', 'CASADO', 'VIUDO', 'DIVORCIADO'] },
     { k: 'dni', l: 'DNI', t: 'text', max: 8 },
     { k: 'cuit', l: 'CUIT', t: 'text', max: 20 },
     { k: 'fecha_nacimiento', l: 'Fecha de Nacimiento', t: 'date' },
-    { k: 'sexo', l: 'Sexo', t: 'select', op: ['Femenino', 'Masculino', 'Otro'] },
+    { k: 'sexo', l: 'Sexo', t: 'select', op: ['FEMENINO', 'MASCULINO', 'OTRO'] },
     { k: 'grupo_sanguineo', l: 'Grupo Sanguíneo', t: 'select', op: GRUPOS_SANGUINEOS },
     { k: 'nacionalidad', l: 'Nacionalidad', t: 'paises' }
   ]],
@@ -489,7 +565,10 @@ function formatFechaCorta(fecha) {
 }
 
 function controlFicha(campo, valor) {
-  const v = (valor === null || valor === undefined) ? '' : String(valor);
+  // El email es el unico dato que va en minuscula; el resto en mayuscula.
+  const v = campo.k === 'email'
+    ? String(valor === null || valor === undefined ? '' : valor).toLowerCase()
+    : mayus(valor);
   const id = `af-${campo.k}`;
 
   if (campo.t === 'select') {
@@ -510,12 +589,7 @@ function controlFicha(campo, valor) {
   if (campo.t === 'number') return `<input type="number" id="${id}" min="0" max="99" step="1" value="${escAttr(v || 0)}">`;
   if (campo.t === 'textarea') return `<textarea id="${id}" rows="3">${escAttr(v)}</textarea>`;
   if (campo.t === 'clases') {
-    const marcadas = v.split(',').map(c => c.trim()).filter(Boolean);
-    return `<div class="checkbox-grid">${CLASES_CARNET.map(c => `
-      <label class="checkbox-item">
-        <input type="checkbox" class="af-clase" value="${escAttr(c.valor)}"${marcadas.includes(c.valor) ? ' checked' : ''}>
-        <span>${escAttr(c.texto)}</span>
-      </label>`).join('')}</div>`;
+    return checkboxesClasesHTML('af-clase', v.split(',').map(c => c.trim()).filter(Boolean));
   }
   return `<input type="${campo.t === 'email' ? 'email' : 'text'}" id="${id}"${campo.max ? ` maxlength="${campo.max}"` : ''} value="${escAttr(v)}">`;
 }
@@ -706,6 +780,11 @@ function fichaImprimibleHTML(data) {
       th, td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; font-size: 11px; }
       th { background: #f3f4f6; }
       .total, .vacio { font-size: 11px; color: #374151; margin-top: 6px; }
+      .declaracion { margin-top: 26px; break-inside: avoid; }
+      .declaracion p { font-size: 11px; line-height: 1.6; text-align: justify; margin: 0; }
+      .firma { margin-top: 26mm; text-align: center; }
+      .linea-firma { width: 70mm; margin: 0 auto; border-bottom: 1px solid #111827; }
+      .firma-pie { margin: 6px 0 0; font-size: 11px; }
       footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #6b7280; }
       @page { margin: 14mm; }
       @media print { body { margin: 0; } h2 { break-after: avoid; } .grid { break-inside: avoid; } }
@@ -717,6 +796,13 @@ function fichaImprimibleHTML(data) {
     ${secciones}
     <h2>Beneficiarios del Seguro</h2>
     ${tablaBenef}
+    <section class="declaracion">
+      <p>Declaro bajo juramento que los datos antes consignados son fidedignos y me comprometo a informar cualquier modificación que se produzca a partir de la fecha, sirviendo los mismos a los efectos legales que pudiera corresponder.</p>
+      <div class="firma">
+        <div class="linea-firma"></div>
+        <p class="firma-pie">Firma del Ingresante</p>
+      </div>
+    </section>
     <footer>Emitido el ${escAttr(new Date().toLocaleString('es-AR'))}</footer>
     </body></html>`;
 }
@@ -814,7 +900,7 @@ function renderFichas(fichas) {
       <td><strong>${escAttr(nombreFicha(f))}</strong></td>
       <td>${escAttr(f.dni)}</td>
       <td>${escAttr(f.celular_empleado || '-')}</td>
-      <td>${escAttr(f.localidad || '-')}</td>
+      <td>${escAttr(f.provincia || '-')}</td>
       <td>
         <select class="select-empresa" onchange="asignarEmpresaFicha(${f.id}, this)">
           <option value=""${!f.empresa ? ' selected' : ''}>Sin asignar</option>
@@ -1840,11 +1926,7 @@ function initMisDatosSelects() {
   document.getElementById('dato-provincia').innerHTML = opcionesLista(PROVINCIAS_ARG, false);
   document.getElementById('dato-grupo-sanguineo').innerHTML = opcionesLista(GRUPOS_SANGUINEOS, false);
 
-  document.getElementById('carnet-clases').innerHTML = CLASES_CARNET.map(c => `
-    <label class="checkbox-item">
-      <input type="checkbox" class="carnet-clase" value="${escAttr(c.valor)}">
-      <span>${escAttr(c.texto)}</span>
-    </label>`).join('');
+  document.getElementById('carnet-clases').innerHTML = checkboxesClasesHTML('carnet-clase', []);
 }
 
 // Los selects de pais/nacionalidad admiten un valor libre cuando no es de America.
@@ -1902,8 +1984,8 @@ function agregarBeneficiarioEn(tbodyId, b) {
   const tbody = document.getElementById(tbodyId);
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input type="text" class="ben-nombre" maxlength="200" value="${escAttr(datos.apellido_nombre)}" placeholder="Apellido y Nombre"></td>
-    <td><input type="text" class="ben-parentesco" maxlength="60" value="${escAttr(datos.parentesco)}" placeholder="Ej: C&oacute;nyuge"></td>
+    <td><input type="text" class="ben-nombre" maxlength="200" value="${escAttr(mayus(datos.apellido_nombre))}" placeholder="Apellido y Nombre"></td>
+    <td><input type="text" class="ben-parentesco" maxlength="60" value="${escAttr(mayus(datos.parentesco))}" placeholder="Ej: C&oacute;nyuge"></td>
     <td><input type="text" class="ben-dni" maxlength="20" value="${escAttr(datos.dni)}"></td>
     <td><input type="number" class="ben-porcentaje" min="0" max="100" step="0.01" value="${escAttr(datos.porcentaje !== undefined && datos.porcentaje !== null ? datos.porcentaje : '')}" oninput="actualizarTotalDe('${tbodyId}')"></td>
     <td><button type="button" class="btn btn-danger btn-sm" onclick="quitarBeneficiario(this)">Quitar</button></td>`;
@@ -1957,42 +2039,47 @@ async function cargarMisDatos() {
     const d = data.datos || {};
     document.getElementById('dato-dni').value = data.dni || '';
 
-    document.getElementById('dato-apellidos').value = d.apellidos || '';
-    document.getElementById('dato-nombres').value = d.nombres || '';
-    document.getElementById('dato-email').value = d.email || '';
-    document.getElementById('dato-estado-civil').value = d.estado_civil || '';
-    document.getElementById('dato-cuit').value = d.cuit || '';
+    // Todo se precarga en mayuscula (asi lo guarda el servidor); solo el email va
+    // en minuscula. El mayus() ademas hace que los registros viejos, cargados con
+    // otra capitalizacion, sigan matcheando con las opciones de los selects.
+    document.getElementById('dato-apellidos').value = mayus(d.apellidos);
+    document.getElementById('dato-nombres').value = mayus(d.nombres);
+    document.getElementById('dato-email').value = (d.email || '').toLowerCase();
+    document.getElementById('dato-estado-civil').value = mayus(d.estado_civil);
+    document.getElementById('dato-cuit').value = mayus(d.cuit);
     document.getElementById('dato-fecha-nacimiento').value = (d.fecha_nacimiento || '').substring(0, 10);
-    document.getElementById('dato-sexo').value = d.sexo || '';
-    document.getElementById('dato-grupo-sanguineo').value = d.grupo_sanguineo || '';
-    setSelectConOtro('nacionalidad', d.nacionalidad);
-    document.getElementById('dato-domicilio').value = d.domicilio || '';
-    document.getElementById('dato-localidad').value = d.localidad || '';
-    document.getElementById('dato-codigo-postal').value = d.codigo_postal || '';
-    document.getElementById('dato-provincia').value = d.provincia || '';
-    setSelectConOtro('pais', d.pais);
-    document.getElementById('dato-obra-social').value = d.obra_social || '';
+    document.getElementById('dato-sexo').value = mayus(d.sexo);
+    document.getElementById('dato-grupo-sanguineo').value = mayus(d.grupo_sanguineo);
+    setSelectConOtro('nacionalidad', mayus(d.nacionalidad));
+    document.getElementById('dato-domicilio').value = mayus(d.domicilio);
+    document.getElementById('dato-localidad').value = mayus(d.localidad);
+    document.getElementById('dato-codigo-postal').value = mayus(d.codigo_postal);
+    document.getElementById('dato-provincia').value = mayus(d.provincia);
+    setSelectConOtro('pais', mayus(d.pais));
+    document.getElementById('dato-obra-social').value = mayus(d.obra_social);
 
-    document.getElementById('dato-carnet-conducir').value = d.carnet_conducir || '';
-    const clases = (d.carnet_clases || '').split(',').map(c => c.trim()).filter(Boolean);
-    document.querySelectorAll('.carnet-clase').forEach(c => c.checked = clases.includes(c.value));
-    document.getElementById('dato-carnet-comentario').value = d.carnet_comentario || '';
-    document.getElementById('carnet-detalle').classList.toggle('hidden', d.carnet_conducir !== 'SI');
+    document.getElementById('dato-carnet-conducir').value = mayus(d.carnet_conducir);
+    // Se re-renderiza en vez de solo tildar, asi las clases del listado anterior
+    // aparecen igual y no se pierden al guardar.
+    const clases = mayus(d.carnet_clases).split(',').map(c => c.trim()).filter(Boolean);
+    document.getElementById('carnet-clases').innerHTML = checkboxesClasesHTML('carnet-clase', clases);
+    document.getElementById('dato-carnet-comentario').value = mayus(d.carnet_comentario);
+    document.getElementById('carnet-detalle').classList.toggle('hidden', mayus(d.carnet_conducir) !== 'SI');
 
-    document.getElementById('dato-nivel-estudio').value = d.nivel_estudio || '';
-    document.getElementById('dato-profesion').value = d.profesion || '';
-    document.getElementById('dato-apellido-conyuge').value = d.apellido_conyuge || '';
-    document.getElementById('dato-nombre-conyuge').value = d.nombre_conyuge || '';
+    document.getElementById('dato-nivel-estudio').value = mayus(d.nivel_estudio);
+    document.getElementById('dato-profesion').value = mayus(d.profesion);
+    document.getElementById('dato-apellido-conyuge').value = mayus(d.apellido_conyuge);
+    document.getElementById('dato-nombre-conyuge').value = mayus(d.nombre_conyuge);
     document.getElementById('dato-cantidad-hijos').value = d.cantidad_hijos !== undefined && d.cantidad_hijos !== null ? d.cantidad_hijos : 0;
-    document.getElementById('dato-banco').value = d.banco || '';
-    document.getElementById('dato-cbu').value = d.cbu || '';
-    document.getElementById('dato-tel-fijo').value = d.tel_fijo || '';
-    document.getElementById('dato-celular-empleado').value = d.celular_empleado || '';
-    document.getElementById('dato-celular-conyuge').value = d.celular_conyuge || '';
-    document.getElementById('dato-talle-camisa').value = d.talle_camisa || '';
-    document.getElementById('dato-talle-pantalon').value = d.talle_pantalon || '';
-    document.getElementById('dato-talle-zapato').value = d.talle_zapato || '';
-    document.getElementById('dato-talle-mameluco').value = d.talle_mameluco || '';
+    document.getElementById('dato-banco').value = mayus(d.banco);
+    document.getElementById('dato-cbu').value = mayus(d.cbu);
+    document.getElementById('dato-tel-fijo').value = mayus(d.tel_fijo);
+    document.getElementById('dato-celular-empleado').value = mayus(d.celular_empleado);
+    document.getElementById('dato-celular-conyuge').value = mayus(d.celular_conyuge);
+    document.getElementById('dato-talle-camisa').value = mayus(d.talle_camisa);
+    document.getElementById('dato-talle-pantalon').value = mayus(d.talle_pantalon);
+    document.getElementById('dato-talle-zapato').value = mayus(d.talle_zapato);
+    document.getElementById('dato-talle-mameluco').value = mayus(d.talle_mameluco);
 
     document.getElementById('tabla-beneficiarios').innerHTML = '';
     (data.beneficiarios || []).forEach(b => agregarBeneficiario(b));

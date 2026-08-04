@@ -43,6 +43,15 @@ async function columnaExiste(tabla, columna) {
   return rows[0].c > 0;
 }
 
+async function longitudColumna(tabla, columna) {
+  const [rows] = await pool.query(
+    `SELECT CHARACTER_MAXIMUM_LENGTH AS largo FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [tabla, columna]
+  );
+  return rows.length > 0 ? rows[0].largo : null;
+}
+
 async function ensureSchema() {
   // administradores
   await pool.query(`
@@ -162,7 +171,7 @@ async function ensureSchema() {
       pais VARCHAR(100) NOT NULL DEFAULT '',
       obra_social VARCHAR(5) NOT NULL DEFAULT '',
       carnet_conducir VARCHAR(5) NOT NULL DEFAULT '',
-      carnet_clases VARCHAR(120) NOT NULL DEFAULT '',
+      carnet_clases VARCHAR(255) NOT NULL DEFAULT '',
       carnet_comentario TEXT,
       nivel_estudio VARCHAR(60) NOT NULL DEFAULT '',
       profesion VARCHAR(120) NOT NULL DEFAULT '',
@@ -183,6 +192,13 @@ async function ensureSchema() {
       CONSTRAINT fk_datos_emp FOREIGN KEY (empleado_id) REFERENCES empleados(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // Migracion: con todas las categorias del carnet (incluidas las profesionales)
+  // los 120 caracteres originales pueden quedar cortos.
+  if ((await longitudColumna('empleados_datos', 'carnet_clases')) < 255) {
+    await pool.query("ALTER TABLE empleados_datos MODIFY carnet_clases VARCHAR(255) NOT NULL DEFAULT ''");
+    console.log('Columna empleados_datos.carnet_clases ampliada a 255 caracteres');
+  }
 
   // empleados_beneficiarios (beneficiarios del seguro, varios por empleado)
   await pool.query(`

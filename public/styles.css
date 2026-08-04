@@ -1065,6 +1065,18 @@ tr:hover td {
   cursor: pointer;
 }
 
+.clases-grupo {
+  margin-bottom: 14px;
+}
+
+.clases-grupo-titulo {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e3a5f;
+  margin-bottom: 6px;
+}
+
 .tabla-beneficiarios th { white-space: nowrap; }
 
 .tabla-beneficiarios input {
@@ -1150,19 +1162,36 @@ tr:hover td {
 #tab-fichas th { font-size: 10px; }
 #tab-fichas td, #tab-fichas th { padding: 10px 12px; }
 
-/* 1cm mas alto que un input estandar (38px) */
-.buscador-alto {
-  height: calc(38px + 1cm);
-  padding: 10px 12px;
+/* Mismo alto y tipografia que los selects de la fila de filtros */
+.filtro-texto {
+  padding: 8px 12px;
   border: 1px solid var(--gray-300);
   border-radius: var(--radius);
-  font-size: 14px;
+  font-size: 0.9rem;
   outline: none;
 }
 
-.buscador-alto:focus {
+.filtro-texto:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Los datos de la ficha se guardan en mayuscula; esto cubre tambien los
+   registros cargados antes de esa regla. */
+#tabla-fichas td { text-transform: uppercase; }
+
+/* Se escriben en mayuscula para que se vea igual que como se va a guardar.
+   El email es la excepcion: va en minuscula. */
+#form-mis-datos input[type="text"],
+#form-mis-datos textarea,
+#modal-datos-cuerpo input[type="text"],
+#modal-datos-cuerpo textarea {
+  text-transform: uppercase;
+}
+
+#dato-email,
+#af-email {
+  text-transform: lowercase;
 }
 
 .acciones-iconos {

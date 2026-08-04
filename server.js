@@ -922,6 +922,12 @@ const CAMPOS_DATOS = [
 
 const MAX_BENEFICIARIOS = 20;
 
+// Todos los datos de la ficha se guardan en MAYUSCULA; el email, en minuscula.
+function normalizarTexto(campo, valor) {
+  const texto = (valor === undefined || valor === null) ? '' : String(valor).trim();
+  return campo === 'email' ? texto.toLowerCase() : texto.toUpperCase();
+}
+
 function normalizarCampoDato(campo, valor) {
   if (campo === 'fecha_nacimiento') {
     const v = (valor || '').toString().trim();
@@ -931,7 +937,7 @@ function normalizarCampoDato(campo, valor) {
     const n = parseInt(valor, 10);
     return Number.isFinite(n) && n >= 0 ? Math.min(n, 99) : 0;
   }
-  return (valor === undefined || valor === null) ? '' : String(valor).trim();
+  return normalizarTexto(campo, valor);
 }
 
 app.get('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
@@ -1009,8 +1015,8 @@ async function guardarFichaEmpleado(empleadoId, datos) {
       }
     }
     benefLimpios.push({
-      apellido_nombre: apellidoNombre.slice(0, 200),
-      parentesco: (b.parentesco || '').toString().trim().slice(0, 60),
+      apellido_nombre: apellidoNombre.toUpperCase().slice(0, 200),
+      parentesco: (b.parentesco || '').toString().trim().toUpperCase().slice(0, 60),
       dni: (b.dni || '').toString().trim().slice(0, 20),
       porcentaje: Number.isFinite(porcentaje) ? porcentaje : 0
     });
