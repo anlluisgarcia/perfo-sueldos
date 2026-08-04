@@ -552,7 +552,8 @@ const CAMPOS_FICHA = [
   ]],
   ['Datos bancarios', [
     { k: 'banco', l: 'Banco', t: 'text', max: 120 },
-    { k: 'cbu', l: 'CBU', t: 'text', max: 30 }
+    { k: 'cbu', l: 'CBU', t: 'text', max: 30 },
+    { k: 'nro_cuenta', l: 'N° de Cuenta', t: 'text', max: 30 }
   ]],
   ['Contacto', [
     { k: 'tel_fijo', l: 'Tel. Fijo', t: 'text', max: 50 },
@@ -859,8 +860,13 @@ function fichaImprimibleHTML(data, logoDataUrl) {
       th, td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; font-size: 11px; }
       th { background: #f3f4f6; }
       .vacio { font-size: 11px; color: #374151; margin-top: 6px; }
-      .declaracion { margin-top: 22px; break-inside: avoid; }
-      .declaracion p { font-size: 11px; line-height: 1.6; text-align: justify; margin: 0; }
+      /* Con @page en 0 la hoja 2 no tiene margen superior. Este bloque viaja entero
+         (break-inside: avoid), asi que su padding le hace de margen si cae arriba
+         de todo en la hoja siguiente. */
+      .declaracion { margin-top: 12px; padding-top: 10mm; break-inside: avoid; }
+      /* Solo el parrafo de la declaracion va justificado: con "p" a secas el
+         justify tambien alcanzaba al pie de la firma y lo sacaba del centro. */
+      .declaracion > p { font-size: 11px; line-height: 1.6; text-align: justify; margin: 0; }
       .croquis { margin: 12px 0 0; text-align: center; break-inside: avoid; }
       .croquis svg { width: 92mm; max-width: 100%; height: auto; }
       .croquis .calles { fill: none; stroke: #374151; stroke-width: 3; }
@@ -2216,6 +2222,7 @@ async function cargarMisDatos() {
     document.getElementById('dato-cantidad-hijos').value = d.cantidad_hijos !== undefined && d.cantidad_hijos !== null ? d.cantidad_hijos : 0;
     document.getElementById('dato-banco').value = mayus(d.banco);
     document.getElementById('dato-cbu').value = mayus(d.cbu);
+    document.getElementById('dato-nro-cuenta').value = mayus(d.nro_cuenta);
     document.getElementById('dato-tel-fijo').value = mayus(d.tel_fijo);
     document.getElementById('dato-celular-empleado').value = mayus(d.celular_empleado);
     document.getElementById('dato-celular-conyuge').value = mayus(d.celular_conyuge);
@@ -2272,6 +2279,7 @@ async function guardarMisDatos(e) {
     cantidad_hijos: document.getElementById('dato-cantidad-hijos').value,
     banco: document.getElementById('dato-banco').value.trim(),
     cbu: document.getElementById('dato-cbu').value.trim(),
+    nro_cuenta: document.getElementById('dato-nro-cuenta').value.trim(),
     tel_fijo: document.getElementById('dato-tel-fijo').value.trim(),
     celular_empleado: document.getElementById('dato-celular-empleado').value.trim(),
     celular_conyuge: document.getElementById('dato-celular-conyuge').value.trim(),

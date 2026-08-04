@@ -180,6 +180,7 @@ async function ensureSchema() {
       cantidad_hijos INT NOT NULL DEFAULT 0,
       banco VARCHAR(120) NOT NULL DEFAULT '',
       cbu VARCHAR(30) NOT NULL DEFAULT '',
+      nro_cuenta VARCHAR(30) NOT NULL DEFAULT '',
       tel_fijo VARCHAR(50) NOT NULL DEFAULT '',
       celular_empleado VARCHAR(50) NOT NULL DEFAULT '',
       celular_conyuge VARCHAR(50) NOT NULL DEFAULT '',
@@ -204,10 +205,15 @@ async function ensureSchema() {
     console.log('Columna empleados_datos.carnet_clases ampliada a 255 caracteres');
   }
 
-  // Migracion: las cuatro calles que rodean la manzana del domicilio (croquis).
-  for (const col of ['croquis_calle_1', 'croquis_calle_2', 'croquis_calle_3', 'croquis_calle_4']) {
+  // Migracion: columnas sumadas a la ficha despues de la creacion de la tabla.
+  const COLUMNAS_FICHA_NUEVAS = [
+    ['croquis_calle_1', 'VARCHAR(120)'], ['croquis_calle_2', 'VARCHAR(120)'],
+    ['croquis_calle_3', 'VARCHAR(120)'], ['croquis_calle_4', 'VARCHAR(120)'],
+    ['nro_cuenta', 'VARCHAR(30)']
+  ];
+  for (const [col, tipo] of COLUMNAS_FICHA_NUEVAS) {
     if (!(await columnaExiste('empleados_datos', col))) {
-      await pool.query(`ALTER TABLE empleados_datos ADD COLUMN ${col} VARCHAR(120) NOT NULL DEFAULT ''`);
+      await pool.query(`ALTER TABLE empleados_datos ADD COLUMN ${col} ${tipo} NOT NULL DEFAULT ''`);
       console.log(`Columna empleados_datos.${col} agregada`);
     }
   }

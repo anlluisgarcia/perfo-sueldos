@@ -319,7 +319,8 @@ const COLUMNAS_EXPORT = [
   ['Comentario Carnet', 'carnet_comentario', 30], ['Nivel de Estudio', 'nivel_estudio', 22],
   ['Profesion', 'profesion', 20], ['Apellido Conyuge', 'apellido_conyuge', 20],
   ['Nombre Conyuge', 'nombre_conyuge', 20], ['Cantidad de Hijos', 'cantidad_hijos', 14],
-  ['Banco', 'banco', 20], ['CBU', 'cbu', 26], ['Tel. Fijo', 'tel_fijo', 16],
+  ['Banco', 'banco', 20], ['CBU', 'cbu', 26], ['Nro de Cuenta', 'nro_cuenta', 20],
+  ['Tel. Fijo', 'tel_fijo', 16],
   ['Celular Empleado', 'celular_empleado', 16], ['Celular Conyuge', 'celular_conyuge', 16],
   ['Talle Camisa', 'talle_camisa', 12], ['Talle Pantalon', 'talle_pantalon', 12],
   ['Talle Zapato', 'talle_zapato', 12], ['Talle Mameluco', 'talle_mameluco', 12],
@@ -946,7 +947,7 @@ const CAMPOS_DATOS = [
   'grupo_sanguineo', 'nacionalidad', 'domicilio', 'localidad', 'codigo_postal', 'provincia',
   'pais', 'obra_social', 'carnet_conducir', 'carnet_clases', 'carnet_comentario',
   'nivel_estudio', 'profesion', 'apellido_conyuge', 'nombre_conyuge', 'cantidad_hijos',
-  'banco', 'cbu', 'tel_fijo', 'celular_empleado', 'celular_conyuge',
+  'banco', 'cbu', 'nro_cuenta', 'tel_fijo', 'celular_empleado', 'celular_conyuge',
   'talle_camisa', 'talle_pantalon', 'talle_zapato', 'talle_mameluco',
   'croquis_calle_1', 'croquis_calle_2', 'croquis_calle_3', 'croquis_calle_4'
 ];
