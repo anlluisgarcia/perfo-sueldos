@@ -3,7 +3,52 @@ let token = '';
 let userRole = '';
 let empleadosCache = [];
 
+// ==================== CATALOGOS ====================
+// Los usan tanto el formulario del empleado como la ficha que edita el admin.
+
+// Argentina va primero por ser el caso mas frecuente; el resto en orden alfabetico.
+const PAISES_AMERICA = [
+  'Argentina', 'Antigua y Barbuda', 'Bahamas', 'Barbados', 'Belice', 'Bolivia', 'Brasil',
+  'Canadá', 'Chile', 'Colombia', 'Costa Rica', 'Cuba', 'Dominica', 'Ecuador',
+  'El Salvador', 'Estados Unidos', 'Granada', 'Guatemala', 'Guyana', 'Haití', 'Honduras',
+  'Jamaica', 'México', 'Nicaragua', 'Panamá', 'Paraguay', 'Perú',
+  'República Dominicana', 'San Cristóbal y Nieves', 'San Vicente y las Granadinas',
+  'Santa Lucía', 'Surinam', 'Trinidad y Tobago', 'Uruguay', 'Venezuela'
+];
+
+const PROVINCIAS_ARG = [
+  'Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Catamarca', 'Chaco', 'Chubut',
+  'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
+  'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis',
+  'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'
+];
+
+const GRUPOS_SANGUINEOS = ['0-', '0+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
+
+const NIVELES_ESTUDIO = [
+  'Primario', 'Secundario Incompleto', 'Secundario Completo',
+  'Terciario Completo', 'Universitario Completo'
+];
+
+const CLASES_CARNET = [
+  { valor: 'A', texto: 'A - Motocicletas y ciclomotores' },
+  { valor: 'B', texto: 'B - Automóviles y camionetas' },
+  { valor: 'C', texto: 'C - Camiones sin acoplado' },
+  { valor: 'D', texto: 'D - Servicio de transporte de pasajeros' },
+  { valor: 'E', texto: 'E - Camiones con acoplado y maquinaria especial' },
+  { valor: 'F', texto: 'F - Vehículos adaptados para personas con discapacidad' },
+  { valor: 'G', texto: 'G - Tractores y maquinaria agrícola' }
+];
+
+const VALOR_OTRO = '__otro__';
+
 // ==================== UTILIDADES ====================
+function escAttr(valor) {
+  return String(valor === undefined || valor === null ? '' : valor)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function showToast(msg, type = 'success') {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
@@ -266,7 +311,7 @@ function renderEmpleados(empleados) {
       <td>${emp.direccion || '-'}</td>
       <td><span class="badge ${emp.estado === 'activo' ? 'badge-success' : 'badge-danger'}">${emp.estado}</span></td>
       <td>
-        <button class="btn btn-outline btn-sm" onclick="verDatosEmpleado(${emp.id})">Ver Datos</button>
+        <button class="btn btn-outline btn-sm" onclick="editarFichaEmpleado(${emp.id})">Datos</button>
         <button class="btn btn-outline btn-sm" onclick="editarEmpleado(${emp.id})">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="confirmarEliminarEmpleado(${emp.id}, '${emp.nombre}')">Eliminar</button>
       </td>
@@ -381,39 +426,61 @@ function cerrarModal() {
   document.getElementById('modal-confirm').classList.add('hidden');
 }
 
-// ==================== ADMIN - VER DATOS DEL EMPLEADO ====================
-// Vista de solo lectura de la ficha que el empleado completa en "Mis Datos".
-const SECCIONES_DATOS = [
+// ==================== ADMIN - FICHA DEL EMPLEADO ====================
+// Una sola definicion de la ficha que alimenta el formulario de edicion y la vista
+// de impresion. 't' es el tipo de control: text, email, date, number, select,
+// paises (select de America + campo libre), clases (checkboxes) y textarea.
+const CAMPOS_FICHA = [
   ['Datos personales', [
-    ['Apellidos', 'apellidos'], ['Nombres', 'nombres'], ['Email', 'email'],
-    ['Estado Civil', 'estado_civil'], ['DNI', 'dni'], ['CUIT', 'cuit'],
-    ['Fecha de Nacimiento', 'fecha_nacimiento'], ['Sexo', 'sexo'],
-    ['Grupo Sanguíneo', 'grupo_sanguineo'], ['Nacionalidad', 'nacionalidad']
+    { k: 'apellidos', l: 'Apellidos', t: 'text', max: 150 },
+    { k: 'nombres', l: 'Nombres', t: 'text', max: 150 },
+    { k: 'email', l: 'Email', t: 'email', max: 150 },
+    { k: 'estado_civil', l: 'Estado Civil', t: 'select', op: ['Soltero', 'Casado', 'Viudo', 'Divorciado'] },
+    { k: 'dni', l: 'DNI', t: 'text', max: 8 },
+    { k: 'cuit', l: 'CUIT', t: 'text', max: 20 },
+    { k: 'fecha_nacimiento', l: 'Fecha de Nacimiento', t: 'date' },
+    { k: 'sexo', l: 'Sexo', t: 'select', op: ['Femenino', 'Masculino', 'Otro'] },
+    { k: 'grupo_sanguineo', l: 'Grupo Sanguíneo', t: 'select', op: GRUPOS_SANGUINEOS },
+    { k: 'nacionalidad', l: 'Nacionalidad', t: 'paises' }
   ]],
   ['Domicilio', [
-    ['Domicilio', 'domicilio'], ['Localidad', 'localidad'],
-    ['Código Postal', 'codigo_postal'], ['Provincia', 'provincia'],
-    ['País', 'pais'], ['Obra Social', 'obra_social']
+    { k: 'domicilio', l: 'Domicilio', t: 'text', max: 200 },
+    { k: 'localidad', l: 'Localidad', t: 'text', max: 120 },
+    { k: 'codigo_postal', l: 'Código Postal', t: 'text', max: 20 },
+    { k: 'provincia', l: 'Provincia', t: 'select', op: PROVINCIAS_ARG },
+    { k: 'pais', l: 'País', t: 'paises' },
+    { k: 'obra_social', l: 'Obra Social', t: 'select', op: ['SI', 'NO'] }
   ]],
   ['Carnet de conducir y estudios', [
-    ['Carnet de Conducción', 'carnet_conducir'], ['Clases', 'carnet_clases'],
-    ['Comentario', 'carnet_comentario'], ['Nivel de Estudio', 'nivel_estudio'],
-    ['Profesión', 'profesion']
+    { k: 'carnet_conducir', l: 'Carnet de Conducción', t: 'select', op: ['SI', 'NO'] },
+    { k: 'carnet_clases', l: 'Clases del carnet', t: 'clases', ancho: true },
+    { k: 'carnet_comentario', l: 'Comentario', t: 'textarea', ancho: true },
+    { k: 'nivel_estudio', l: 'Nivel de Estudio', t: 'select', op: NIVELES_ESTUDIO },
+    { k: 'profesion', l: 'Profesión', t: 'text', max: 120 }
   ]],
   ['Grupo familiar', [
-    ['Apellido del Cónyuge', 'apellido_conyuge'], ['Nombre del Cónyuge', 'nombre_conyuge'],
-    ['Cantidad de Hijos', 'cantidad_hijos']
+    { k: 'apellido_conyuge', l: 'Apellido del Cónyuge', t: 'text', max: 150 },
+    { k: 'nombre_conyuge', l: 'Nombre del Cónyuge', t: 'text', max: 150 },
+    { k: 'cantidad_hijos', l: 'Cantidad de Hijos', t: 'number' }
   ]],
-  ['Datos bancarios', [['Banco', 'banco'], ['CBU', 'cbu']]],
+  ['Datos bancarios', [
+    { k: 'banco', l: 'Banco', t: 'text', max: 120 },
+    { k: 'cbu', l: 'CBU', t: 'text', max: 30 }
+  ]],
   ['Contacto', [
-    ['Tel. Fijo', 'tel_fijo'], ['Celular Empleado', 'celular_empleado'],
-    ['Celular Cónyuge', 'celular_conyuge']
+    { k: 'tel_fijo', l: 'Tel. Fijo', t: 'text', max: 50 },
+    { k: 'celular_empleado', l: 'Celular Empleado', t: 'text', max: 50 },
+    { k: 'celular_conyuge', l: 'Celular Cónyuge', t: 'text', max: 50 }
   ]],
   ['Ropa de Trabajo (Talles)', [
-    ['Camisa', 'talle_camisa'], ['Pantalón', 'talle_pantalon'],
-    ['Zapato', 'talle_zapato'], ['Mameluco', 'talle_mameluco']
+    { k: 'talle_camisa', l: 'Camisa', t: 'text', max: 20 },
+    { k: 'talle_pantalon', l: 'Pantalón', t: 'text', max: 20 },
+    { k: 'talle_zapato', l: 'Zapato', t: 'text', max: 20 },
+    { k: 'talle_mameluco', l: 'Mameluco', t: 'text', max: 20 }
   ]]
 ];
+
+let fichaEmpleadoId = null;
 
 function formatFechaCorta(fecha) {
   if (!fecha) return '';
@@ -421,11 +488,109 @@ function formatFechaCorta(fecha) {
   return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : fecha;
 }
 
-async function verDatosEmpleado(id) {
+function controlFicha(campo, valor) {
+  const v = (valor === null || valor === undefined) ? '' : String(valor);
+  const id = `af-${campo.k}`;
+
+  if (campo.t === 'select') {
+    const opciones = ['', ...campo.op].map(o =>
+      `<option value="${escAttr(o)}"${v === o ? ' selected' : ''}>${o ? escAttr(o) : 'Seleccionar...'}</option>`).join('');
+    return `<select id="${id}"${campo.k === 'carnet_conducir' ? ' onchange="toggleCarnetFicha()"' : ''}>${opciones}</select>`;
+  }
+  if (campo.t === 'paises') {
+    const esOtro = !!v && !PAISES_AMERICA.includes(v);
+    return `<select id="${id}" onchange="toggleOtroFicha('${campo.k}')">
+        <option value="">Seleccionar...</option>
+        ${PAISES_AMERICA.map(p => `<option value="${escAttr(p)}"${v === p ? ' selected' : ''}>${escAttr(p)}</option>`).join('')}
+        <option value="${VALOR_OTRO}"${esOtro ? ' selected' : ''}>Otro (cargar manualmente)</option>
+      </select>
+      <input type="text" id="${id}-otro" class="campo-otro${esOtro ? '' : ' hidden'}" maxlength="100" value="${esOtro ? escAttr(v) : ''}" placeholder="Escriba el valor">`;
+  }
+  if (campo.t === 'date') return `<input type="date" id="${id}" value="${escAttr(v.substring(0, 10))}">`;
+  if (campo.t === 'number') return `<input type="number" id="${id}" min="0" max="99" step="1" value="${escAttr(v || 0)}">`;
+  if (campo.t === 'textarea') return `<textarea id="${id}" rows="3">${escAttr(v)}</textarea>`;
+  if (campo.t === 'clases') {
+    const marcadas = v.split(',').map(c => c.trim()).filter(Boolean);
+    return `<div class="checkbox-grid">${CLASES_CARNET.map(c => `
+      <label class="checkbox-item">
+        <input type="checkbox" class="af-clase" value="${escAttr(c.valor)}"${marcadas.includes(c.valor) ? ' checked' : ''}>
+        <span>${escAttr(c.texto)}</span>
+      </label>`).join('')}</div>`;
+  }
+  return `<input type="${campo.t === 'email' ? 'email' : 'text'}" id="${id}"${campo.max ? ` maxlength="${campo.max}"` : ''} value="${escAttr(v)}">`;
+}
+
+function formularioFichaHTML(d) {
+  return CAMPOS_FICHA.map(([titulo, campos]) => {
+    const anchos = campos.filter(c => c.ancho);
+    const normales = campos.filter(c => !c.ancho);
+    let html = `<h4 class="datos-seccion">${escAttr(titulo)}</h4><div class="ficha-grid">`;
+    html += normales.map(c => `
+      <div class="form-group">
+        <label>${escAttr(c.l)}</label>
+        ${controlFicha(c, d[c.k])}
+      </div>`).join('');
+    html += '</div>';
+    if (anchos.length) {
+      html += `<div id="ficha-carnet-detalle" class="${d.carnet_conducir === 'SI' ? '' : 'hidden'}">`;
+      html += anchos.map(c => `
+        <div class="form-group">
+          <label>${escAttr(c.l)}</label>
+          ${controlFicha(c, d[c.k])}
+        </div>`).join('');
+      html += '</div>';
+    }
+    return html;
+  }).join('');
+}
+
+function toggleOtroFicha(campo) {
+  const sel = document.getElementById(`af-${campo}`);
+  const input = document.getElementById(`af-${campo}-otro`);
+  const esOtro = sel.value === VALOR_OTRO;
+  input.classList.toggle('hidden', !esOtro);
+  if (!esOtro) input.value = '';
+}
+
+function toggleCarnetFicha() {
+  const tiene = document.getElementById('af-carnet_conducir').value === 'SI';
+  document.getElementById('ficha-carnet-detalle').classList.toggle('hidden', !tiene);
+  if (!tiene) {
+    document.querySelectorAll('.af-clase').forEach(c => c.checked = false);
+    document.getElementById('af-carnet_comentario').value = '';
+  }
+}
+
+function leerFormularioFicha() {
+  const payload = { beneficiarios: leerBeneficiariosDe('tabla-beneficiarios-ficha') };
+  const tieneCarnet = document.getElementById('af-carnet_conducir').value === 'SI';
+
+  CAMPOS_FICHA.forEach(([, campos]) => campos.forEach(c => {
+    if (c.t === 'clases') {
+      payload[c.k] = tieneCarnet
+        ? Array.from(document.querySelectorAll('.af-clase:checked')).map(x => x.value).join(', ')
+        : '';
+      return;
+    }
+    const el = document.getElementById(`af-${c.k}`);
+    if (!el) return;
+    if (c.k === 'carnet_comentario' && !tieneCarnet) { payload[c.k] = ''; return; }
+    if (c.t === 'paises' && el.value === VALOR_OTRO) {
+      payload[c.k] = document.getElementById(`af-${c.k}-otro`).value.trim();
+      return;
+    }
+    payload[c.k] = el.value.trim();
+  }));
+  return payload;
+}
+
+async function editarFichaEmpleado(id) {
+  fichaEmpleadoId = id;
   const modal = document.getElementById('modal-datos-empleado');
   const cuerpo = document.getElementById('modal-datos-cuerpo');
   cuerpo.innerHTML = '<p class="datos-cargando">Cargando...</p>';
   document.getElementById('modal-datos-subtitulo').textContent = '';
+  document.getElementById('btn-guardar-ficha').classList.add('hidden');
   modal.classList.remove('hidden');
 
   try {
@@ -434,65 +599,180 @@ async function verDatosEmpleado(id) {
     if (!res.ok) throw new Error(data.error || 'Error al obtener los datos');
 
     document.getElementById('modal-datos-subtitulo').textContent =
-      `${data.nombre} · DNI ${data.dni}${data.empresa ? ' · ' + data.empresa : ''}`;
+      `${data.nombre}${data.empresa ? ' · ' + data.empresa : ''}`;
 
-    if (!data.datos) {
-      cuerpo.innerHTML = '<div class="info-box">El empleado a&uacute;n no complet&oacute; su ficha de datos personales.</div>';
-      return;
-    }
+    // El DNI vive en empleados, no en la ficha: se inyecta para editarlo junto al resto.
+    const d = Object.assign({}, data.datos || {}, { dni: data.dni });
 
-    // El DNI se toma del alta de usuario, no de la ficha.
-    const d = Object.assign({}, data.datos, { dni: data.dni });
-    d.fecha_nacimiento = formatFechaCorta(d.fecha_nacimiento);
-
-    let html = SECCIONES_DATOS.map(([titulo, campos]) => `
-      <h4 class="datos-seccion">${titulo}</h4>
-      <div class="datos-grid">
-        ${campos.map(([etiqueta, campo]) => `
-          <div class="datos-item">
-            <span class="datos-label">${etiqueta}</span>
-            <span class="datos-valor">${escAttr(d[campo] !== null && d[campo] !== undefined && d[campo] !== '' ? d[campo] : '-')}</span>
-          </div>`).join('')}
-      </div>`).join('');
-
-    const benef = data.beneficiarios || [];
-    html += '<h4 class="datos-seccion">Beneficiarios del Seguro</h4>';
-    if (benef.length === 0) {
-      html += '<p class="datos-vacio">Sin beneficiarios cargados.</p>';
-    } else {
-      const total = benef.reduce((acc, b) => acc + (parseFloat(b.porcentaje) || 0), 0);
-      html += `
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr><th>Apellido y Nombre</th><th>Parentesco</th><th>DNI</th><th>Porcentaje</th></tr>
-            </thead>
-            <tbody>
-              ${benef.map(b => `
-                <tr>
-                  <td>${escAttr(b.apellido_nombre)}</td>
-                  <td>${escAttr(b.parentesco || '-')}</td>
-                  <td>${escAttr(b.dni || '-')}</td>
-                  <td>${(parseFloat(b.porcentaje) || 0).toFixed(2)}%</td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-        </div>
-        <p class="beneficiarios-total" style="margin-top:10px">Total asignado: ${total.toFixed(2)}%</p>`;
-    }
-
+    let html = formularioFichaHTML(d);
+    html += `
+      <h4 class="datos-seccion">Beneficiarios del Seguro</h4>
+      <div class="table-responsive">
+        <table class="tabla-beneficiarios">
+          <thead>
+            <tr><th>Apellido y Nombre</th><th>Parentesco</th><th>DNI</th><th>Porcentaje</th><th></th></tr>
+          </thead>
+          <tbody id="tabla-beneficiarios-ficha"></tbody>
+        </table>
+      </div>
+      <div class="beneficiarios-footer">
+        <button type="button" class="btn btn-outline btn-sm" onclick="agregarBeneficiarioEn('tabla-beneficiarios-ficha')">+ Agregar Beneficiario</button>
+        <span id="beneficiarios-total-ficha" class="beneficiarios-total"></span>
+      </div>`;
     if (d.updated_at) {
-      html += `<p class="firma-fecha-guardada">Ultima actualizacion: ${new Date(d.updated_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>`;
+      html += `<p class="firma-fecha-guardada">Ultima actualizacion: ${escAttr(new Date(d.updated_at).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</p>`;
     }
-
     cuerpo.innerHTML = html;
+
+    (data.beneficiarios || []).forEach(b => agregarBeneficiarioEn('tabla-beneficiarios-ficha', b));
+    actualizarTotalDe('tabla-beneficiarios-ficha');
+    document.getElementById('btn-guardar-ficha').classList.remove('hidden');
   } catch (err) {
     cuerpo.innerHTML = `<div class="info-box">${escAttr(err.message)}</div>`;
   }
 }
 
+async function guardarFichaEmpleado() {
+  if (!fichaEmpleadoId) return;
+  const boton = document.getElementById('btn-guardar-ficha');
+  const texto = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = 'Guardando...';
+  try {
+    const res = await fetch(`${API}/api/admin/empleados/${fichaEmpleadoId}/datos`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(leerFormularioFicha())
+    });
+    const data = await leerJson(res);
+    if (!res.ok) throw new Error(data.error);
+    showToast(data.message);
+    cerrarModalDatosEmpleado();
+    cargarFichas();
+    cargarEmpleados();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    boton.disabled = false;
+    boton.textContent = texto;
+  }
+}
+
 function cerrarModalDatosEmpleado() {
   document.getElementById('modal-datos-empleado').classList.add('hidden');
+  fichaEmpleadoId = null;
+}
+
+// ---------- Imprimir ----------
+function fichaImprimibleHTML(data) {
+  const d = Object.assign({}, data.datos || {}, { dni: data.dni });
+  const secciones = CAMPOS_FICHA.map(([titulo, campos]) => `
+    <h2>${escAttr(titulo)}</h2>
+    <div class="grid">
+      ${campos.map(c => {
+        const valor = c.t === 'date' ? formatFechaCorta(d[c.k]) : d[c.k];
+        return `<div class="item"><span class="lbl">${escAttr(c.l)}</span><span class="val">${escAttr(valor !== null && valor !== undefined && valor !== '' ? valor : '-')}</span></div>`;
+      }).join('')}
+    </div>`).join('');
+
+  const benef = data.beneficiarios || [];
+  const total = benef.reduce((acc, b) => acc + (parseFloat(b.porcentaje) || 0), 0);
+  const tablaBenef = benef.length === 0
+    ? '<p class="vacio">Sin beneficiarios cargados.</p>'
+    : `<table>
+         <thead><tr><th>Apellido y Nombre</th><th>Parentesco</th><th>DNI</th><th>Porcentaje</th></tr></thead>
+         <tbody>${benef.map(b => `<tr>
+           <td>${escAttr(b.apellido_nombre)}</td><td>${escAttr(b.parentesco || '-')}</td>
+           <td>${escAttr(b.dni || '-')}</td><td>${(parseFloat(b.porcentaje) || 0).toFixed(2)}%</td>
+         </tr>`).join('')}</tbody>
+       </table>
+       <p class="total">Total asignado: ${total.toFixed(2)}%</p>`;
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>Ficha - ${escAttr(data.nombre)}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 24px; font-size: 12px; }
+      header { border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 18px; }
+      header h1 { font-size: 18px; margin: 0 0 4px; color: #1e3a5f; }
+      header p { margin: 0; color: #374151; font-size: 12px; }
+      h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #1e3a5f;
+           border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin: 16px 0 10px; }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 18px; }
+      .item { display: flex; flex-direction: column; }
+      .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+      .val { font-size: 12px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+      th, td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; font-size: 11px; }
+      th { background: #f3f4f6; }
+      .total, .vacio { font-size: 11px; color: #374151; margin-top: 6px; }
+      footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #6b7280; }
+      @page { margin: 14mm; }
+      @media print { body { margin: 0; } h2 { break-after: avoid; } .grid { break-inside: avoid; } }
+    </style></head><body>
+    <header>
+      <h1>Ficha de Datos Personales</h1>
+      <p>${escAttr(data.nombre)} &nbsp;·&nbsp; DNI ${escAttr(data.dni)}${data.empresa ? ' &nbsp;·&nbsp; ' + escAttr(data.empresa) : ''}</p>
+    </header>
+    ${secciones}
+    <h2>Beneficiarios del Seguro</h2>
+    ${tablaBenef}
+    <footer>Emitido el ${escAttr(new Date().toLocaleString('es-AR'))}</footer>
+    </body></html>`;
+}
+
+async function imprimirFichaEmpleado(id) {
+  // La ventana se abre antes del fetch: si se abriera despues del await, el
+  // navegador lo trata como popup no solicitado y lo bloquea.
+  const ventana = window.open('', '_blank');
+  if (!ventana) {
+    showToast('El navegador bloqueo la ventana de impresion. Permita las ventanas emergentes.', 'error');
+    return;
+  }
+  ventana.document.write('<p style="font-family:sans-serif;margin:24px">Generando ficha...</p>');
+
+  try {
+    const res = await fetch(`${API}/api/admin/empleados/${id}/datos`, { headers: headersAuth() });
+    const data = await leerJson(res);
+    if (!res.ok) throw new Error(data.error || 'Error al obtener los datos');
+
+    ventana.document.open();
+    ventana.document.write(fichaImprimibleHTML(data));
+    ventana.document.close();
+    ventana.focus();
+
+    // Segun el navegador, el load ya puede haber ocurrido al cerrar el document.
+    // El flag evita que se abra el dialogo de impresion dos veces.
+    let impreso = false;
+    const imprimir = () => { if (!impreso) { impreso = true; ventana.print(); } };
+    ventana.onload = imprimir;
+    if (ventana.document.readyState === 'complete') setTimeout(imprimir, 250);
+  } catch (err) {
+    ventana.close();
+    showToast(err.message, 'error');
+  }
+}
+
+// ---------- WhatsApp ----------
+// Normaliza a formato internacional argentino: 54 9 + area + numero.
+function telefonoWhatsapp(numero) {
+  let n = String(numero || '').replace(/\D/g, '');
+  if (!n) return '';
+  if (n.startsWith('00')) n = n.slice(2);
+  if (n.startsWith('54')) n = n.slice(2);
+  if (n.startsWith('0')) n = n.slice(1);
+  if (n.startsWith('9')) n = n.slice(1);
+  return n.length >= 8 ? '549' + n : '';
+}
+
+function enviarWhatsappEmpleado(id) {
+  const ficha = fichasCache.find(f => f.id === id);
+  const numero = telefonoWhatsapp(ficha && ficha.celular_empleado);
+  if (!numero) {
+    showToast('El empleado no tiene cargado un celular valido en su ficha', 'error');
+    return;
+  }
+  window.open(`https://wa.me/${numero}`, '_blank');
 }
 
 // ==================== ADMIN - LISTADO DE FICHAS ====================
@@ -517,18 +797,22 @@ function nombreFicha(f) {
   return completo || f.nombre || '-';
 }
 
+const ICONO_EDITAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+const ICONO_IMPRIMIR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+const ICONO_WHATSAPP = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.6.13-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.38-.27.3-1.04 1.01-1.04 2.470 0 1.45 1.06 2.86 1.21 3.06.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.28.17-1.41-.07-.13-.27-.2-.57-.35z"/><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.69 8.21-8.24 8.21z"/></svg>';
+
 function renderFichas(fichas) {
   const tbody = document.getElementById('tabla-fichas');
   if (fichas.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray-500);padding:40px">No hay empleados que coincidan con el filtro</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-500);padding:40px">No hay empleados que coincidan con el filtro</td></tr>';
     return;
   }
-  tbody.innerHTML = fichas.map(f => `
+  tbody.innerHTML = fichas.map(f => {
+    const conCelular = !!telefonoWhatsapp(f.celular_empleado);
+    return `
     <tr>
       <td><strong>${escAttr(nombreFicha(f))}</strong></td>
       <td>${escAttr(f.dni)}</td>
-      <td>${escAttr(f.cuit || '-')}</td>
-      <td>${escAttr(f.email || '-')}</td>
       <td>${escAttr(f.celular_empleado || '-')}</td>
       <td>${escAttr(f.localidad || '-')}</td>
       <td>
@@ -538,9 +822,15 @@ function renderFichas(fichas) {
         </select>
       </td>
       <td><span class="badge ${f.tiene_ficha ? 'badge-success' : 'badge-warning'}">${f.tiene_ficha ? 'Cargada' : 'Pendiente'}</span></td>
-      <td><button class="btn btn-outline btn-sm" onclick="verDatosEmpleado(${f.id})">Ver Datos</button></td>
-    </tr>
-  `).join('');
+      <td>
+        <div class="acciones-iconos">
+          <button class="btn-accion btn-accion-editar" title="Editar datos" onclick="editarFichaEmpleado(${f.id})">${ICONO_EDITAR}</button>
+          <button class="btn-accion btn-accion-imprimir" title="Imprimir ficha" onclick="imprimirFichaEmpleado(${f.id})">${ICONO_IMPRIMIR}</button>
+          <button class="btn-accion btn-accion-whatsapp" title="${conCelular ? 'Enviar WhatsApp al ' + escAttr(f.celular_empleado) : 'Sin celular cargado'}"${conCelular ? '' : ' disabled'} onclick="enviarWhatsappEmpleado(${f.id})">${ICONO_WHATSAPP}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function filtrarFichas() {
@@ -1532,43 +1822,7 @@ function confirmarEliminarUsuario(id, nombre) {
 }
 
 // ==================== EMPLEADO - MIS DATOS ====================
-// Argentina va primero por ser el caso mas frecuente; el resto en orden alfabetico.
-const PAISES_AMERICA = [
-  'Argentina', 'Antigua y Barbuda', 'Bahamas', 'Barbados', 'Belice', 'Bolivia', 'Brasil',
-  'Canadá', 'Chile', 'Colombia', 'Costa Rica', 'Cuba', 'Dominica', 'Ecuador',
-  'El Salvador', 'Estados Unidos', 'Granada', 'Guatemala', 'Guyana', 'Haití', 'Honduras',
-  'Jamaica', 'México', 'Nicaragua', 'Panamá', 'Paraguay', 'Perú',
-  'República Dominicana', 'San Cristóbal y Nieves', 'San Vicente y las Granadinas',
-  'Santa Lucía', 'Surinam', 'Trinidad y Tobago', 'Uruguay', 'Venezuela'
-];
-
-const PROVINCIAS_ARG = [
-  'Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Catamarca', 'Chaco', 'Chubut',
-  'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
-  'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis',
-  'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán'
-];
-
-const GRUPOS_SANGUINEOS = ['0-', '0+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
-
-const CLASES_CARNET = [
-  { valor: 'A', texto: 'A - Motocicletas y ciclomotores' },
-  { valor: 'B', texto: 'B - Automóviles y camionetas' },
-  { valor: 'C', texto: 'C - Camiones sin acoplado' },
-  { valor: 'D', texto: 'D - Servicio de transporte de pasajeros' },
-  { valor: 'E', texto: 'E - Camiones con acoplado y maquinaria especial' },
-  { valor: 'F', texto: 'F - Vehículos adaptados para personas con discapacidad' },
-  { valor: 'G', texto: 'G - Tractores y maquinaria agrícola' }
-];
-
-const VALOR_OTRO = '__otro__';
 let misDatosSelectsListos = false;
-
-function escAttr(valor) {
-  return String(valor === undefined || valor === null ? '' : valor)
-    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 function opcionesLista(items, incluirOtro) {
   let html = '<option value="">Seleccionar...</option>';
@@ -1636,47 +1890,61 @@ function toggleCarnetConducir() {
 }
 
 // ---------- Beneficiarios del seguro ----------
-function agregarBeneficiario(b) {
+// La misma tabla se usa en el portal del empleado y en la ficha que edita el admin,
+// por eso todo se parametriza con el id del tbody. El contador de total se deduce
+// por convencion: tabla-beneficiarios[-x] -> beneficiarios-total[-x].
+function idTotalBeneficiarios(tbodyId) {
+  return tbodyId.replace('tabla-beneficiarios', 'beneficiarios-total');
+}
+
+function agregarBeneficiarioEn(tbodyId, b) {
   const datos = b || {};
-  const tbody = document.getElementById('tabla-beneficiarios');
+  const tbody = document.getElementById(tbodyId);
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><input type="text" class="ben-nombre" maxlength="200" value="${escAttr(datos.apellido_nombre)}" placeholder="Apellido y Nombre"></td>
     <td><input type="text" class="ben-parentesco" maxlength="60" value="${escAttr(datos.parentesco)}" placeholder="Ej: C&oacute;nyuge"></td>
     <td><input type="text" class="ben-dni" maxlength="20" value="${escAttr(datos.dni)}"></td>
-    <td><input type="number" class="ben-porcentaje" min="0" max="100" step="0.01" value="${escAttr(datos.porcentaje !== undefined && datos.porcentaje !== null ? datos.porcentaje : '')}" oninput="actualizarTotalBeneficiarios()"></td>
+    <td><input type="number" class="ben-porcentaje" min="0" max="100" step="0.01" value="${escAttr(datos.porcentaje !== undefined && datos.porcentaje !== null ? datos.porcentaje : '')}" oninput="actualizarTotalDe('${tbodyId}')"></td>
     <td><button type="button" class="btn btn-danger btn-sm" onclick="quitarBeneficiario(this)">Quitar</button></td>`;
   tbody.appendChild(tr);
-  actualizarTotalBeneficiarios();
+  actualizarTotalDe(tbodyId);
 }
 
 function quitarBeneficiario(boton) {
+  const tbody = boton.closest('tbody');
   boton.closest('tr').remove();
-  actualizarTotalBeneficiarios();
+  actualizarTotalDe(tbody.id);
 }
 
-function actualizarTotalBeneficiarios() {
-  const total = Array.from(document.querySelectorAll('#tabla-beneficiarios .ben-porcentaje'))
-    .reduce((acc, i) => acc + (parseFloat(i.value) || 0), 0);
-  const el = document.getElementById('beneficiarios-total');
-  const filas = document.querySelectorAll('#tabla-beneficiarios tr').length;
+function actualizarTotalDe(tbodyId) {
+  const el = document.getElementById(idTotalBeneficiarios(tbodyId));
+  if (!el) return;
+  const filas = document.querySelectorAll(`#${tbodyId} tr`).length;
   if (filas === 0) {
     el.textContent = '';
     el.classList.remove('total-excedido');
     return;
   }
+  const total = Array.from(document.querySelectorAll(`#${tbodyId} .ben-porcentaje`))
+    .reduce((acc, i) => acc + (parseFloat(i.value) || 0), 0);
   el.textContent = `Total asignado: ${total.toFixed(2)}%`;
   el.classList.toggle('total-excedido', total > 100);
 }
 
-function leerBeneficiarios() {
-  return Array.from(document.querySelectorAll('#tabla-beneficiarios tr')).map(tr => ({
+function leerBeneficiariosDe(tbodyId) {
+  return Array.from(document.querySelectorAll(`#${tbodyId} tr`)).map(tr => ({
     apellido_nombre: tr.querySelector('.ben-nombre').value.trim(),
     parentesco: tr.querySelector('.ben-parentesco').value.trim(),
     dni: tr.querySelector('.ben-dni').value.trim(),
     porcentaje: tr.querySelector('.ben-porcentaje').value
   })).filter(b => b.apellido_nombre);
 }
+
+// Envoltorios para el formulario del empleado, que los llama desde el HTML.
+function agregarBeneficiario(b) { agregarBeneficiarioEn('tabla-beneficiarios', b); }
+function actualizarTotalBeneficiarios() { actualizarTotalDe('tabla-beneficiarios'); }
+function leerBeneficiarios() { return leerBeneficiariosDe('tabla-beneficiarios'); }
 
 // ---------- Carga y guardado ----------
 async function cargarMisDatos() {

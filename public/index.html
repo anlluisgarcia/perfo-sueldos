@@ -208,7 +208,7 @@
           <p class="firma-descripcion">Ficha personal que carga cada empleado desde su portal. La empresa asignada aqu&iacute; se aplica a los recibos que se suban de aqu&iacute; en m&aacute;s; los ya cargados conservan la empresa que ten&iacute;an al subirse.</p>
 
           <div style="display:flex;gap:10px;align-items:center;margin:16px 0;flex-wrap:wrap">
-            <input type="text" id="buscar-ficha" placeholder="Buscar por nombre, DNI o CUIT..." oninput="filtrarFichas()" style="flex:1;max-width:350px">
+            <input type="text" id="buscar-ficha" class="buscador-alto" placeholder="Buscar por nombre, DNI o CUIT..." oninput="filtrarFichas()" style="flex:1;max-width:350px">
             <select id="filtro-empresa-fichas" onchange="filtrarFichas()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
               <option value="">Todas las empresas</option>
               <option value="BTZ MINERA">BTZ MINERA</option>
@@ -229,8 +229,6 @@
                 <tr>
                   <th>Apellido y Nombre</th>
                   <th>DNI</th>
-                  <th>CUIT</th>
-                  <th>Email</th>
                   <th>Celular</th>
                   <th>Localidad</th>
                   <th>Empresa</th>
@@ -947,10 +945,11 @@
   <!-- MODAL DATOS DEL EMPLEADO (consulta admin) -->
   <div id="modal-datos-empleado" class="modal hidden">
     <div class="modal-content modal-datos-content">
-      <h3 id="modal-datos-titulo">Datos del Empleado</h3>
+      <h3 id="modal-datos-titulo">Editar Datos del Empleado</h3>
       <p id="modal-datos-subtitulo"></p>
       <div id="modal-datos-cuerpo"></div>
       <div class="modal-actions">
+        <button class="btn btn-primary hidden" id="btn-guardar-ficha" onclick="guardarFichaEmpleado()">Guardar Cambios</button>
         <button class="btn btn-outline" onclick="cerrarModalDatosEmpleado()">Cerrar</button>
       </div>
     </div>

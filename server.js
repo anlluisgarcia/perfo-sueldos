@@ -967,96 +967,125 @@ app.get('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
   }
 });
 
+// Guarda la ficha de un empleado. La usan tanto el empleado desde su portal como el
+// admin desde el listado, con las mismas validaciones.
+// Devuelve { status, body } listo para responder.
+async function guardarFichaEmpleado(empleadoId, datos) {
+  const beneficiarios = Array.isArray(datos.beneficiarios) ? datos.beneficiarios : [];
+  if (beneficiarios.length > MAX_BENEFICIARIOS) {
+    return { status: 400, body: { error: `No se pueden cargar mas de ${MAX_BENEFICIARIOS} beneficiarios` } };
+  }
+
+  const email = (datos.email || '').trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { status: 400, body: { error: 'El email no tiene un formato valido' } };
+  }
+
+  // El DNI es unico y es el mismo con el que el empleado inicia sesion, asi que
+  // se valida antes de tocar nada. Si no viene en el body, queda como estaba.
+  const db = getDb();
+  let dniNuevo = null;
+  if (datos.dni !== undefined) {
+    const dni = String(datos.dni).trim();
+    if (!/^\d{7,8}$/.test(dni)) {
+      return { status: 400, body: { error: 'El DNI debe tener 7 u 8 digitos, sin puntos ni espacios' } };
+    }
+    const duplicado = await db.exec('SELECT id FROM empleados WHERE dni = ? AND id != ?', [dni, empleadoId]);
+    if (duplicado.length > 0 && duplicado[0].values.length > 0) {
+      return { status: 400, body: { error: 'Ya existe otro empleado registrado con ese DNI' } };
+    }
+    dniNuevo = dni;
+  }
+
+  // Solo se guardan los beneficiarios con nombre; el resto de la fila se descarta.
+  const benefLimpios = [];
+  for (const b of beneficiarios) {
+    const apellidoNombre = (b.apellido_nombre || '').toString().trim();
+    if (!apellidoNombre) continue;
+    const porcentaje = parseFloat(b.porcentaje);
+    if (b.porcentaje !== '' && b.porcentaje !== undefined && b.porcentaje !== null) {
+      if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100) {
+        return { status: 400, body: { error: 'El porcentaje de cada beneficiario debe estar entre 0 y 100' } };
+      }
+    }
+    benefLimpios.push({
+      apellido_nombre: apellidoNombre.slice(0, 200),
+      parentesco: (b.parentesco || '').toString().trim().slice(0, 60),
+      dni: (b.dni || '').toString().trim().slice(0, 20),
+      porcentaje: Number.isFinite(porcentaje) ? porcentaje : 0
+    });
+  }
+
+  const totalPorcentaje = benefLimpios.reduce((acc, b) => acc + b.porcentaje, 0);
+  if (totalPorcentaje > 100) {
+    return { status: 400, body: { error: 'La suma de los porcentajes de los beneficiarios no puede superar 100%' } };
+  }
+
+  const valores = CAMPOS_DATOS.map(c => normalizarCampoDato(c, datos[c]));
+  const columnas = ['empleado_id', ...CAMPOS_DATOS];
+  const placeholders = columnas.map(() => '?').join(', ');
+  const asignaciones = CAMPOS_DATOS.map(c => `${c} = ?`).join(', ');
+
+  await db.run(
+    `INSERT INTO empleados_datos (${columnas.join(', ')}) VALUES (${placeholders})
+     ON DUPLICATE KEY UPDATE ${asignaciones}`,
+    [empleadoId, ...valores, ...valores]
+  );
+
+  await db.run('DELETE FROM empleados_beneficiarios WHERE empleado_id = ?', [empleadoId]);
+  for (const b of benefLimpios) {
+    await db.run(
+      'INSERT INTO empleados_beneficiarios (empleado_id, apellido_nombre, parentesco, dni, porcentaje) VALUES (?, ?, ?, ?, ?)',
+      [empleadoId, b.apellido_nombre, b.parentesco, b.dni, b.porcentaje]
+    );
+  }
+
+  let dniCambiado = false;
+  if (dniNuevo !== null) {
+    const actual = await db.exec('SELECT dni FROM empleados WHERE id = ?', [empleadoId]);
+    const dniActual = (actual.length > 0 && actual[0].values.length > 0) ? actual[0].values[0][0] : '';
+    if (dniActual !== dniNuevo) {
+      await db.run('UPDATE empleados SET dni = ? WHERE id = ?', [dniNuevo, empleadoId]);
+      dniCambiado = true;
+    }
+  }
+
+  return { status: 200, body: { dni_cambiado: dniCambiado, dni: dniNuevo } };
+}
+
 app.post('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
   try {
-    const beneficiarios = Array.isArray(req.body.beneficiarios) ? req.body.beneficiarios : [];
-    if (beneficiarios.length > MAX_BENEFICIARIOS) {
-      return res.status(400).json({ error: `No puede cargar mas de ${MAX_BENEFICIARIOS} beneficiarios` });
-    }
-
-    const email = (req.body.email || '').trim();
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'El email no tiene un formato valido' });
-    }
-
-    // El DNI es unico y es el mismo con el que el empleado inicia sesion, asi que
-    // se valida antes de tocar nada. Si no viene en el body, queda como estaba.
-    const db = getDb();
-    let dniNuevo = null;
-    if (req.body.dni !== undefined) {
-      const dni = String(req.body.dni).trim();
-      if (!/^\d{7,8}$/.test(dni)) {
-        return res.status(400).json({ error: 'El DNI debe tener 7 u 8 digitos, sin puntos ni espacios' });
-      }
-      const duplicado = await db.exec('SELECT id FROM empleados WHERE dni = ? AND id != ?', [dni, req.user.id]);
-      if (duplicado.length > 0 && duplicado[0].values.length > 0) {
-        return res.status(400).json({ error: 'Ya existe otro empleado registrado con ese DNI' });
-      }
-      dniNuevo = dni;
-    }
-
-    // Solo se guardan los beneficiarios con nombre; el resto de la fila se descarta.
-    const benefLimpios = [];
-    for (const b of beneficiarios) {
-      const apellidoNombre = (b.apellido_nombre || '').toString().trim();
-      if (!apellidoNombre) continue;
-      const porcentaje = parseFloat(b.porcentaje);
-      if (b.porcentaje !== '' && b.porcentaje !== undefined && b.porcentaje !== null) {
-        if (!Number.isFinite(porcentaje) || porcentaje < 0 || porcentaje > 100) {
-          return res.status(400).json({ error: 'El porcentaje de cada beneficiario debe estar entre 0 y 100' });
-        }
-      }
-      benefLimpios.push({
-        apellido_nombre: apellidoNombre.slice(0, 200),
-        parentesco: (b.parentesco || '').toString().trim().slice(0, 60),
-        dni: (b.dni || '').toString().trim().slice(0, 20),
-        porcentaje: Number.isFinite(porcentaje) ? porcentaje : 0
-      });
-    }
-
-    const totalPorcentaje = benefLimpios.reduce((acc, b) => acc + b.porcentaje, 0);
-    if (totalPorcentaje > 100) {
-      return res.status(400).json({ error: 'La suma de los porcentajes de los beneficiarios no puede superar 100%' });
-    }
-
-    const valores = CAMPOS_DATOS.map(c => normalizarCampoDato(c, req.body[c]));
-    const columnas = ['empleado_id', ...CAMPOS_DATOS];
-    const placeholders = columnas.map(() => '?').join(', ');
-    const asignaciones = CAMPOS_DATOS.map(c => `${c} = ?`).join(', ');
-
-    await db.run(
-      `INSERT INTO empleados_datos (${columnas.join(', ')}) VALUES (${placeholders})
-       ON DUPLICATE KEY UPDATE ${asignaciones}`,
-      [req.user.id, ...valores, ...valores]
-    );
-
-    await db.run('DELETE FROM empleados_beneficiarios WHERE empleado_id = ?', [req.user.id]);
-    for (const b of benefLimpios) {
-      await db.run(
-        'INSERT INTO empleados_beneficiarios (empleado_id, apellido_nombre, parentesco, dni, porcentaje) VALUES (?, ?, ?, ?, ?)',
-        [req.user.id, b.apellido_nombre, b.parentesco, b.dni, b.porcentaje]
-      );
-    }
-
-    let dniCambiado = false;
-    if (dniNuevo !== null) {
-      const actual = await db.exec('SELECT dni FROM empleados WHERE id = ?', [req.user.id]);
-      const dniActual = (actual.length > 0 && actual[0].values.length > 0) ? actual[0].values[0][0] : '';
-      if (dniActual !== dniNuevo) {
-        await db.run('UPDATE empleados SET dni = ? WHERE id = ?', [dniNuevo, req.user.id]);
-        dniCambiado = true;
-      }
-    }
-
-    res.json({
-      message: dniCambiado
-        ? 'Datos guardados. A partir de ahora debe iniciar sesion con el DNI ' + dniNuevo
-        : 'Datos guardados exitosamente',
-      dni_cambiado: dniCambiado
-    });
+    const { status, body } = await guardarFichaEmpleado(req.user.id, req.body);
+    if (status !== 200) return res.status(status).json(body);
+    res.json(Object.assign({}, body, {
+      message: body.dni_cambiado
+        ? 'Datos guardados. A partir de ahora debe iniciar sesion con el DNI ' + body.dni
+        : 'Datos guardados exitosamente'
+    }));
   } catch (err) {
     console.error('Mis datos POST error:', err);
     res.status(500).json({ error: 'Error al guardar sus datos' });
+  }
+});
+
+// El admin edita la ficha de cualquier empleado desde el listado de Datos Empleados.
+app.put('/api/admin/empleados/:id/datos', authAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const existe = await db.exec('SELECT id FROM empleados WHERE id = ?', [req.params.id]);
+    if (existe.length === 0 || existe[0].values.length === 0) {
+      return res.status(404).json({ error: 'Empleado no encontrado' });
+    }
+    const { status, body } = await guardarFichaEmpleado(parseInt(req.params.id, 10), req.body);
+    if (status !== 200) return res.status(status).json(body);
+    res.json(Object.assign({}, body, {
+      message: body.dni_cambiado
+        ? 'Datos guardados. El empleado ahora inicia sesion con el DNI ' + body.dni
+        : 'Datos guardados exitosamente'
+    }));
+  } catch (err) {
+    console.error('Guardar ficha (admin) error:', err);
+    res.status(500).json({ error: 'Error al guardar los datos del empleado' });
   }
 });
 

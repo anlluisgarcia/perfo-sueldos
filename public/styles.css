@@ -304,7 +304,7 @@ body {
 }
 
 .admin-layout {
-  max-width: 1400px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 24px;
   display: grid;
@@ -1143,6 +1143,75 @@ tr:hover td {
   font-size: 14px;
   color: var(--gray-500);
 }
+
+/* ========== ADMIN - LISTADO DE DATOS DE EMPLEADOS ========== */
+/* Fuente 2px mas chica que la tabla estandar (14px celdas / 12px encabezado). */
+#tab-fichas td { font-size: 12px; }
+#tab-fichas th { font-size: 10px; }
+#tab-fichas td, #tab-fichas th { padding: 10px 12px; }
+
+/* 1cm mas alto que un input estandar (38px) */
+.buscador-alto {
+  height: calc(38px + 1cm);
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+  outline: none;
+}
+
+.buscador-alto:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.acciones-iconos {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-accion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  background: white;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-accion svg {
+  width: 17px;
+  height: 17px;
+}
+
+.btn-accion-editar { color: #ea580c; }
+.btn-accion-editar:hover:not(:disabled) { background: #ea580c; color: white; }
+
+.btn-accion-imprimir { color: var(--primary); }
+.btn-accion-imprimir:hover:not(:disabled) { background: var(--primary); color: white; }
+
+.btn-accion-whatsapp { color: #16a34a; }
+.btn-accion-whatsapp:hover:not(:disabled) { background: #16a34a; color: white; }
+
+.btn-accion:disabled {
+  color: var(--gray-300);
+  cursor: not-allowed;
+}
+
+/* Grilla del formulario de la ficha dentro del modal */
+.ficha-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 20px;
+}
+
+.ficha-grid .form-group { margin-bottom: 14px; }
 
 .select-empresa {
   padding: 6px 10px;
