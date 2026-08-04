@@ -16,7 +16,35 @@ const JWT_SECRET = process.env.JWT_SECRET || 'recibos_sueldos_secret_key_2024';
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Apache le pone Expires de un año a app.js y styles.css, asi que despues de cada
+// deploy el navegador sigue mostrando la version vieja hasta que el usuario hace
+// Ctrl+F5. El index (que no se cachea) se sirve con ?v=<fecha de los archivos>:
+// al cambiar la URL, el navegador se ve obligado a bajar la version nueva.
+const RUTA_PUBLIC = path.join(__dirname, 'public');
+
+function versionEstaticos() {
+  try {
+    const fechas = ['app.js', 'styles.css'].map(f => fs.statSync(path.join(RUTA_PUBLIC, f)).mtimeMs);
+    return Math.floor(Math.max.apply(null, fechas)).toString(36);
+  } catch (err) {
+    return String(Date.now());
+  }
+}
+
+const VERSION_ESTATICOS = versionEstaticos();
+
+app.get(['/', '/index.html'], (req, res, next) => {
+  fs.readFile(path.join(RUTA_PUBLIC, 'index.html'), 'utf8', (err, html) => {
+    if (err) return next();
+    res.set('Cache-Control', 'no-cache');
+    res.type('html').send(html
+      .replace('href="styles.css"', `href="styles.css?v=${VERSION_ESTATICOS}"`)
+      .replace('src="app.js"', `src="app.js?v=${VERSION_ESTATICOS}"`));
+  });
+});
+
+app.use(express.static(RUTA_PUBLIC));
 
 // Endpoint liviano para keep-alive (evita que Passenger apague el proceso por inactividad).
 // No toca la base de datos: responde al instante para mantener Node "caliente".
