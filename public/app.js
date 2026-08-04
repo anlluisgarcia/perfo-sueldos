@@ -742,7 +742,7 @@ function fichaImprimibleHTML(data) {
   const d = Object.assign({}, data.datos || {}, { dni: data.dni });
   const secciones = CAMPOS_FICHA.map(([titulo, campos]) => `
     <h2>${escAttr(titulo)}</h2>
-    <div class="grid">
+    <div class="grid${titulo.startsWith('Ropa') ? ' grid-talles' : ''}">
       ${campos.map(c => {
         const valor = c.t === 'date' ? formatFechaCorta(d[c.k]) : d[c.k];
         return `<div class="item"><span class="lbl">${escAttr(c.l)}</span><span class="val">${escAttr(valor !== null && valor !== undefined && valor !== '' ? valor : '-')}</span></div>`;
@@ -750,7 +750,6 @@ function fichaImprimibleHTML(data) {
     </div>`).join('');
 
   const benef = data.beneficiarios || [];
-  const total = benef.reduce((acc, b) => acc + (parseFloat(b.porcentaje) || 0), 0);
   const tablaBenef = benef.length === 0
     ? '<p class="vacio">Sin beneficiarios cargados.</p>'
     : `<table>
@@ -759,51 +758,95 @@ function fichaImprimibleHTML(data) {
            <td>${escAttr(b.apellido_nombre)}</td><td>${escAttr(b.parentesco || '-')}</td>
            <td>${escAttr(b.dni || '-')}</td><td>${(parseFloat(b.porcentaje) || 0).toFixed(2)}%</td>
          </tr>`).join('')}</tbody>
-       </table>
-       <p class="total">Total asignado: ${total.toFixed(2)}%</p>`;
+       </table>`;
+
+  // Croquis del domicilio: se dibuja en SVG (y no como imagen externa) para que
+  // la ventana de impresion no dependa de ningun archivo servido aparte.
+  const croquis = `
+    <div class="croquis">
+      <svg viewBox="0 0 1780 1730" role="img" aria-label="Croquis del domicilio">
+        <g class="calles">
+          <path d="M425 495 H540 V380" />
+          <path d="M675 380 V495 H1150 V380" />
+          <path d="M1360 495 H1245 V380" />
+          <path d="M425 620 H540 V1095 H425" />
+          <path d="M1360 620 H1245 V1095 H1360" />
+          <path d="M425 1210 H540 V1325" />
+          <path d="M675 1325 V1210 H1150 V1325" />
+          <path d="M1360 1210 H1245 V1325" />
+        </g>
+        <rect class="lote" x="675" y="620" width="475" height="475" />
+        <text class="rosa" x="890" y="330" text-anchor="middle">N</text>
+        <text class="rosa" x="890" y="1500" text-anchor="middle">S</text>
+        <text class="rosa" x="330" y="920" text-anchor="middle">E</text>
+        <text class="rosa" x="1450" y="920" text-anchor="middle">O</text>
+        <text class="calle" x="675" y="585">calle 1:</text>
+        <line class="renglon" x1="895" y1="590" x2="1150" y2="590" />
+        <text class="calle" x="675" y="1180">calle 2:</text>
+        <line class="renglon" x1="895" y1="1185" x2="1150" y2="1185" />
+        <g transform="rotate(-90 655 1085)">
+          <text class="calle" x="655" y="1085">calle 3:</text>
+          <line class="renglon" x1="875" y1="1090" x2="1085" y2="1090" />
+        </g>
+        <g transform="rotate(-90 1230 1085)">
+          <text class="calle" x="1230" y="1085">calle 4:</text>
+          <line class="renglon" x1="1450" y1="1090" x2="1660" y2="1090" />
+        </g>
+      </svg>
+    </div>`;
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
     <title>Ficha - ${escAttr(data.nombre)}</title>
     <style>
       * { box-sizing: border-box; }
-      body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 24px; font-size: 12px; }
+      body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 0; padding: 14mm; font-size: 12px; }
       header { border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 18px; }
-      header h1 { font-size: 18px; margin: 0 0 4px; color: #1e3a5f; }
-      header p { margin: 0; color: #374151; font-size: 12px; }
+      header h1 { font-size: 18px; margin: 0; color: #1e3a5f; }
       h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #1e3a5f;
            border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin: 16px 0 10px; }
       .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 18px; }
+      .grid-talles { grid-template-columns: repeat(4, 1fr); }
+      .grid-talles .item { flex-direction: row; align-items: baseline; gap: 5px; }
+      .grid-talles .lbl::after { content: ':'; }
       .item { display: flex; flex-direction: column; }
       .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
       .val { font-size: 12px; }
       table { width: 100%; border-collapse: collapse; margin-top: 6px; }
       th, td { border: 1px solid #e5e7eb; padding: 5px 8px; text-align: left; font-size: 11px; }
       th { background: #f3f4f6; }
-      .total, .vacio { font-size: 11px; color: #374151; margin-top: 6px; }
-      .declaracion { margin-top: 26px; break-inside: avoid; }
+      .vacio { font-size: 11px; color: #374151; margin-top: 6px; }
+      .declaracion { margin-top: 22px; break-inside: avoid; }
       .declaracion p { font-size: 11px; line-height: 1.6; text-align: justify; margin: 0; }
-      .firma { margin-top: 26mm; text-align: center; }
+      .croquis { margin: 12px 0 0; text-align: center; break-inside: avoid; }
+      .croquis svg { width: 92mm; max-width: 100%; height: auto; }
+      .croquis .calles { fill: none; stroke: #374151; stroke-width: 3; }
+      .croquis .lote { fill: none; stroke: #111827; stroke-width: 6; }
+      .croquis .renglon { stroke: #111827; stroke-width: 3; }
+      .croquis .rosa { font: bold 140px 'Segoe UI', sans-serif; fill: #1f2937; }
+      .croquis .calle { font: 58px 'Segoe UI', sans-serif; fill: #1f2937; }
+      .firma { margin-top: 16mm; text-align: center; }
       .linea-firma { width: 70mm; margin: 0 auto; border-bottom: 1px solid #111827; }
       .firma-pie { margin: 6px 0 0; font-size: 11px; }
-      footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #6b7280; }
-      @page { margin: 14mm; }
-      @media print { body { margin: 0; } h2 { break-after: avoid; } .grid { break-inside: avoid; } }
+      /* El margen 0 de @page es lo que hace que Chrome/Edge no impriman su
+         encabezado (fecha y hora) ni su pie (about:blank). El aire del papel
+         lo pone el padding del body. */
+      @page { size: A4; margin: 0; }
+      @media print { h2 { break-after: avoid; } .grid { break-inside: avoid; } }
     </style></head><body>
     <header>
-      <h1>Ficha de Datos Personales</h1>
-      <p>${escAttr(data.nombre)} &nbsp;·&nbsp; DNI ${escAttr(data.dni)}${data.empresa ? ' &nbsp;·&nbsp; ' + escAttr(data.empresa) : ''}</p>
+      <h1>DDJJ-Ficha de Datos Personales</h1>
     </header>
     ${secciones}
     <h2>Beneficiarios del Seguro</h2>
     ${tablaBenef}
     <section class="declaracion">
       <p>Declaro bajo juramento que los datos antes consignados son fidedignos y me comprometo a informar cualquier modificación que se produzca a partir de la fecha, sirviendo los mismos a los efectos legales que pudiera corresponder.</p>
+      ${croquis}
       <div class="firma">
         <div class="linea-firma"></div>
         <p class="firma-pie">Firma del Ingresante</p>
       </div>
     </section>
-    <footer>Emitido el ${escAttr(new Date().toLocaleString('es-AR'))}</footer>
     </body></html>`;
 }
 
