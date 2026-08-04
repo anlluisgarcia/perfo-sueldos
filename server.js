@@ -295,6 +295,8 @@ const COLUMNAS_EXPORT = [
   ['Celular Empleado', 'celular_empleado', 16], ['Celular Conyuge', 'celular_conyuge', 16],
   ['Talle Camisa', 'talle_camisa', 12], ['Talle Pantalon', 'talle_pantalon', 12],
   ['Talle Zapato', 'talle_zapato', 12], ['Talle Mameluco', 'talle_mameluco', 12],
+  ['Croquis Calle 1', 'croquis_calle_1', 20], ['Croquis Calle 2', 'croquis_calle_2', 20],
+  ['Croquis Calle 3', 'croquis_calle_3', 20], ['Croquis Calle 4', 'croquis_calle_4', 20],
   ['Empresa', 'empresa', 26], ['Estado', 'estado', 12],
   ['Ficha', 'ficha_estado', 12], ['Beneficiarios', 'beneficiarios', 13],
   ['Ultima Actualizacion', 'actualizado', 20]
@@ -917,7 +919,8 @@ const CAMPOS_DATOS = [
   'pais', 'obra_social', 'carnet_conducir', 'carnet_clases', 'carnet_comentario',
   'nivel_estudio', 'profesion', 'apellido_conyuge', 'nombre_conyuge', 'cantidad_hijos',
   'banco', 'cbu', 'tel_fijo', 'celular_empleado', 'celular_conyuge',
-  'talle_camisa', 'talle_pantalon', 'talle_zapato', 'talle_mameluco'
+  'talle_camisa', 'talle_pantalon', 'talle_zapato', 'talle_mameluco',
+  'croquis_calle_1', 'croquis_calle_2', 'croquis_calle_3', 'croquis_calle_4'
 ];
 
 const MAX_BENEFICIARIOS = 20;

@@ -1242,6 +1242,40 @@ tr:hover td {
 
 .ficha-grid .form-group { margin-bottom: 14px; }
 
+/* Croquis del domicilio (portal del empleado) */
+.croquis-editor {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.croquis-lienzo {
+  flex: 0 0 320px;
+  max-width: 100%;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 8px;
+  background: white;
+}
+
+.croquis-lienzo svg { display: block; width: 100%; height: auto; }
+.croquis-lienzo .calles { fill: none; stroke: var(--gray-400, #9ca3af); stroke-width: 3; }
+.croquis-lienzo .lote { fill: none; stroke: #1e3a5f; stroke-width: 7; }
+.croquis-lienzo .renglon { stroke: var(--gray-300, #d1d5db); stroke-width: 3; }
+.croquis-lienzo .rosa { font: 700 140px 'Segoe UI', sans-serif; fill: #1f2937; }
+.croquis-lienzo .calle { font: 58px 'Segoe UI', sans-serif; fill: #6b7280; }
+.croquis-lienzo .calle-valor { font: 46px 'Segoe UI', sans-serif; fill: #1e3a5f; }
+
+.croquis-campos {
+  flex: 1 1 260px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0 16px;
+}
+
+.croquis-campos .form-group { margin-bottom: 14px; }
+
 .select-empresa {
   padding: 6px 10px;
   border: 1px solid var(--gray-300);

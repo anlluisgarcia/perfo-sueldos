@@ -506,6 +506,17 @@ function cerrarModal() {
 // Una sola definicion de la ficha que alimenta el formulario de edicion y la vista
 // de impresion. 't' es el tipo de control: text, email, date, number, select,
 // paises (select de America + campo libre), clases (checkboxes) y textarea.
+
+// Las calles del croquis se editan como campos comunes, pero en la impresion no se
+// listan: se dibujan dentro del croquis, arriba de la firma.
+const SECCION_CROQUIS = 'Croquis del domicilio';
+const CAMPOS_CROQUIS = [
+  { k: 'croquis_calle_1', l: 'Calle 1 (arriba)', t: 'text', max: 120 },
+  { k: 'croquis_calle_2', l: 'Calle 2 (abajo)', t: 'text', max: 120 },
+  { k: 'croquis_calle_3', l: 'Calle 3 (izquierda)', t: 'text', max: 120 },
+  { k: 'croquis_calle_4', l: 'Calle 4 (derecha)', t: 'text', max: 120 }
+];
+
 const CAMPOS_FICHA = [
   ['Datos personales', [
     { k: 'apellidos', l: 'Apellidos', t: 'text', max: 150 },
@@ -553,10 +564,63 @@ const CAMPOS_FICHA = [
     { k: 'talle_pantalon', l: 'Pantalón', t: 'text', max: 20 },
     { k: 'talle_zapato', l: 'Zapato', t: 'text', max: 20 },
     { k: 'talle_mameluco', l: 'Mameluco', t: 'text', max: 20 }
-  ]]
+  ]],
+  [SECCION_CROQUIS, CAMPOS_CROQUIS]
 ];
 
 let fichaEmpleadoId = null;
+
+// Croquis del domicilio: la manzana con las cuatro calles que la rodean. Se dibuja
+// en SVG (y no como imagen) para que la ventana de impresion no dependa de ningun
+// archivo servido aparte y para que el portal pueda escribir los nombres encima.
+function croquisSVG(d) {
+  const valorCalle = k => {
+    const v = (d && d[k] !== undefined && d[k] !== null) ? String(d[k]).trim() : '';
+    return v;
+  };
+  // Los nombres largos se comprimen al ancho del renglon para que no se monten
+  // sobre las calles vecinas.
+  const textoCalle = (k, x, y, ancho) => {
+    const v = valorCalle(k);
+    if (!v) return '';
+    const ajuste = v.length > 11 ? ` textLength="${ancho}" lengthAdjust="spacingAndGlyphs"` : '';
+    return `<text class="calle-valor" x="${x}" y="${y}"${ajuste}>${escAttr(v)}</text>`;
+  };
+
+  return `<svg viewBox="0 0 1780 1730" role="img" aria-label="Croquis del domicilio">
+      <g class="calles">
+        <path d="M425 495 H540 V380" />
+        <path d="M675 380 V495 H1150 V380" />
+        <path d="M1360 495 H1245 V380" />
+        <path d="M425 620 H540 V1095 H425" />
+        <path d="M1360 620 H1245 V1095 H1360" />
+        <path d="M425 1210 H540 V1325" />
+        <path d="M675 1325 V1210 H1150 V1325" />
+        <path d="M1360 1210 H1245 V1325" />
+      </g>
+      <rect class="lote" x="675" y="620" width="475" height="475" />
+      <text class="rosa" x="890" y="330" text-anchor="middle">N</text>
+      <text class="rosa" x="890" y="1500" text-anchor="middle">S</text>
+      <text class="rosa" x="330" y="920" text-anchor="middle">E</text>
+      <text class="rosa" x="1450" y="920" text-anchor="middle">O</text>
+      <text class="calle" x="675" y="585">calle 1:</text>
+      <line class="renglon" x1="895" y1="590" x2="1150" y2="590" />
+      ${textoCalle('croquis_calle_1', 900, 575, 245)}
+      <text class="calle" x="675" y="1180">calle 2:</text>
+      <line class="renglon" x1="895" y1="1185" x2="1150" y2="1185" />
+      ${textoCalle('croquis_calle_2', 900, 1170, 245)}
+      <g transform="rotate(-90 655 1085)">
+        <text class="calle" x="655" y="1085">calle 3:</text>
+        <line class="renglon" x1="875" y1="1090" x2="1085" y2="1090" />
+        ${textoCalle('croquis_calle_3', 880, 1075, 200)}
+      </g>
+      <g transform="rotate(-90 1230 1085)">
+        <text class="calle" x="1230" y="1085">calle 4:</text>
+        <line class="renglon" x1="1450" y1="1090" x2="1660" y2="1090" />
+        ${textoCalle('croquis_calle_4', 1455, 1075, 200)}
+      </g>
+    </svg>`;
+}
 
 function formatFechaCorta(fecha) {
   if (!fecha) return '';
@@ -740,7 +804,7 @@ function cerrarModalDatosEmpleado() {
 // ---------- Imprimir ----------
 function fichaImprimibleHTML(data) {
   const d = Object.assign({}, data.datos || {}, { dni: data.dni });
-  const secciones = CAMPOS_FICHA.map(([titulo, campos]) => `
+  const secciones = CAMPOS_FICHA.filter(([titulo]) => titulo !== SECCION_CROQUIS).map(([titulo, campos]) => `
     <h2>${escAttr(titulo)}</h2>
     <div class="grid${titulo.startsWith('Ropa') ? ' grid-talles' : ''}">
       ${campos.map(c => {
@@ -760,39 +824,18 @@ function fichaImprimibleHTML(data) {
          </tr>`).join('')}</tbody>
        </table>`;
 
-  // Croquis del domicilio: se dibuja en SVG (y no como imagen externa) para que
-  // la ventana de impresion no dependa de ningun archivo servido aparte.
-  const croquis = `
-    <div class="croquis">
-      <svg viewBox="0 0 1780 1730" role="img" aria-label="Croquis del domicilio">
-        <g class="calles">
-          <path d="M425 495 H540 V380" />
-          <path d="M675 380 V495 H1150 V380" />
-          <path d="M1360 495 H1245 V380" />
-          <path d="M425 620 H540 V1095 H425" />
-          <path d="M1360 620 H1245 V1095 H1360" />
-          <path d="M425 1210 H540 V1325" />
-          <path d="M675 1325 V1210 H1150 V1325" />
-          <path d="M1360 1210 H1245 V1325" />
-        </g>
-        <rect class="lote" x="675" y="620" width="475" height="475" />
-        <text class="rosa" x="890" y="330" text-anchor="middle">N</text>
-        <text class="rosa" x="890" y="1500" text-anchor="middle">S</text>
-        <text class="rosa" x="330" y="920" text-anchor="middle">E</text>
-        <text class="rosa" x="1450" y="920" text-anchor="middle">O</text>
-        <text class="calle" x="675" y="585">calle 1:</text>
-        <line class="renglon" x1="895" y1="590" x2="1150" y2="590" />
-        <text class="calle" x="675" y="1180">calle 2:</text>
-        <line class="renglon" x1="895" y1="1185" x2="1150" y2="1185" />
-        <g transform="rotate(-90 655 1085)">
-          <text class="calle" x="655" y="1085">calle 3:</text>
-          <line class="renglon" x1="875" y1="1090" x2="1085" y2="1090" />
-        </g>
-        <g transform="rotate(-90 1230 1085)">
-          <text class="calle" x="1230" y="1085">calle 4:</text>
-          <line class="renglon" x1="1450" y1="1090" x2="1660" y2="1090" />
-        </g>
+  const croquis = `<div class="croquis">${croquisSVG(d)}</div>`;
+
+  // El logo solo se imprime para BTZ MINERA: Perforaciones Iglesianas no lleva.
+  const esBtz = String(data.empresa || '').trim().toUpperCase() === 'BTZ MINERA';
+  const logo = !esBtz ? '' : `
+    <div class="logo-empresa">
+      <svg viewBox="0 0 100 100" role="img" aria-label="BTZ MINERA">
+        <rect width="100" height="100" rx="18" fill="#ff8c00" />
+        <text x="50" y="50" text-anchor="middle" dominant-baseline="central"
+              font-family="'Segoe UI', sans-serif" font-size="34" font-weight="700" fill="#ffffff">BTZ</text>
       </svg>
+      <span>BTZ MINERA</span>
     </div>`;
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
@@ -800,8 +843,14 @@ function fichaImprimibleHTML(data) {
     <style>
       * { box-sizing: border-box; }
       body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; color: #111827; margin: 0; padding: 14mm; font-size: 12px; }
-      header { border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 18px; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+               border-bottom: 2px solid #1e3a5f; padding-bottom: 12px; margin-bottom: 18px; }
       header h1 { font-size: 18px; margin: 0; color: #1e3a5f; }
+      /* El recuadro naranja va como SVG y no como fondo CSS: asi se imprime aunque
+         el navegador tenga desactivados los graficos de fondo. */
+      .logo-empresa { display: flex; align-items: center; gap: 7px; flex: none; }
+      .logo-empresa svg { width: 13mm; height: 13mm; }
+      .logo-empresa span { font-size: 11px; font-weight: 700; color: #1e3a5f; letter-spacing: .04em; }
       h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #1e3a5f;
            border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin: 16px 0 10px; }
       .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 18px; }
@@ -824,6 +873,7 @@ function fichaImprimibleHTML(data) {
       .croquis .renglon { stroke: #111827; stroke-width: 3; }
       .croquis .rosa { font: bold 140px 'Segoe UI', sans-serif; fill: #1f2937; }
       .croquis .calle { font: 58px 'Segoe UI', sans-serif; fill: #1f2937; }
+      .croquis .calle-valor { font: 46px 'Segoe UI', sans-serif; fill: #111827; }
       .firma { margin-top: 16mm; text-align: center; }
       .linea-firma { width: 70mm; margin: 0 auto; border-bottom: 1px solid #111827; }
       .firma-pie { margin: 6px 0 0; font-size: 11px; }
@@ -835,6 +885,7 @@ function fichaImprimibleHTML(data) {
     </style></head><body>
     <header>
       <h1>DDJJ-Ficha de Datos Personales</h1>
+      ${logo}
     </header>
     ${secciones}
     <h2>Beneficiarios del Seguro</h2>
@@ -2071,9 +2122,29 @@ function agregarBeneficiario(b) { agregarBeneficiarioEn('tabla-beneficiarios', b
 function actualizarTotalBeneficiarios() { actualizarTotalDe('tabla-beneficiarios'); }
 function leerBeneficiarios() { return leerBeneficiariosDe('tabla-beneficiarios'); }
 
+// ---------- Croquis del domicilio ----------
+// El id del input sale de la clave del campo: croquis_calle_1 -> dato-croquis-calle-1.
+function inputCroquis(campo) {
+  return document.getElementById('dato-' + campo.k.replace(/_/g, '-'));
+}
+
+// Se redibuja entero en cada tecla: es un SVG chico y asi el empleado ve el nombre
+// de la calle en el mismo lugar en el que va a salir impreso.
+function dibujarCroquis() {
+  const lienzo = document.getElementById('croquis-lienzo');
+  if (!lienzo) return;
+  const valores = {};
+  CAMPOS_CROQUIS.forEach(c => {
+    const el = inputCroquis(c);
+    valores[c.k] = el ? el.value : '';
+  });
+  lienzo.innerHTML = croquisSVG(valores);
+}
+
 // ---------- Carga y guardado ----------
 async function cargarMisDatos() {
   initMisDatosSelects();
+  dibujarCroquis();
   try {
     const res = await fetch(`${API}/api/empleado/mis-datos`, { headers: headersAuth() });
     const data = await leerJson(res);
@@ -2123,6 +2194,9 @@ async function cargarMisDatos() {
     document.getElementById('dato-talle-pantalon').value = mayus(d.talle_pantalon);
     document.getElementById('dato-talle-zapato').value = mayus(d.talle_zapato);
     document.getElementById('dato-talle-mameluco').value = mayus(d.talle_mameluco);
+
+    CAMPOS_CROQUIS.forEach(c => { inputCroquis(c).value = mayus(d[c.k]); });
+    dibujarCroquis();
 
     document.getElementById('tabla-beneficiarios').innerHTML = '';
     (data.beneficiarios || []).forEach(b => agregarBeneficiario(b));
@@ -2178,6 +2252,7 @@ async function guardarMisDatos(e) {
     talle_mameluco: document.getElementById('dato-talle-mameluco').value.trim(),
     beneficiarios: leerBeneficiarios()
   };
+  CAMPOS_CROQUIS.forEach(c => { payload[c.k] = inputCroquis(c).value.trim(); });
 
   try {
     const res = await fetch(`${API}/api/empleado/mis-datos`, {

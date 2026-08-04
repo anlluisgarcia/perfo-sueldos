@@ -187,6 +187,10 @@ async function ensureSchema() {
       talle_pantalon VARCHAR(20) NOT NULL DEFAULT '',
       talle_zapato VARCHAR(20) NOT NULL DEFAULT '',
       talle_mameluco VARCHAR(20) NOT NULL DEFAULT '',
+      croquis_calle_1 VARCHAR(120) NOT NULL DEFAULT '',
+      croquis_calle_2 VARCHAR(120) NOT NULL DEFAULT '',
+      croquis_calle_3 VARCHAR(120) NOT NULL DEFAULT '',
+      croquis_calle_4 VARCHAR(120) NOT NULL DEFAULT '',
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       CONSTRAINT fk_datos_emp FOREIGN KEY (empleado_id) REFERENCES empleados(id)
@@ -198,6 +202,14 @@ async function ensureSchema() {
   if ((await longitudColumna('empleados_datos', 'carnet_clases')) < 255) {
     await pool.query("ALTER TABLE empleados_datos MODIFY carnet_clases VARCHAR(255) NOT NULL DEFAULT ''");
     console.log('Columna empleados_datos.carnet_clases ampliada a 255 caracteres');
+  }
+
+  // Migracion: las cuatro calles que rodean la manzana del domicilio (croquis).
+  for (const col of ['croquis_calle_1', 'croquis_calle_2', 'croquis_calle_3', 'croquis_calle_4']) {
+    if (!(await columnaExiste('empleados_datos', col))) {
+      await pool.query(`ALTER TABLE empleados_datos ADD COLUMN ${col} VARCHAR(120) NOT NULL DEFAULT ''`);
+      console.log(`Columna empleados_datos.${col} agregada`);
+    }
   }
 
   // empleados_beneficiarios (beneficiarios del seguro, varios por empleado)
