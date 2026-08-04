@@ -34,6 +34,15 @@ const dbWrapper = {
   }
 };
 
+async function columnaExiste(tabla, columna) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS c FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [tabla, columna]
+  );
+  return rows[0].c > 0;
+}
+
 async function ensureSchema() {
   // administradores
   await pool.query(`
@@ -64,10 +73,13 @@ async function ensureSchema() {
   `);
 
   // recibos
+  // empresa es una foto del momento de la carga: si despues se cambia la empresa
+  // del empleado, los recibos ya subidos conservan la que tenian.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS recibos (
       id INT AUTO_INCREMENT PRIMARY KEY,
       empleado_id INT NOT NULL,
+      empresa VARCHAR(200) NOT NULL DEFAULT '',
       fecha_recibo VARCHAR(20) NOT NULL,
       archivo_nombre VARCHAR(255) NOT NULL,
       archivo_path VARCHAR(255) NOT NULL,
@@ -77,6 +89,18 @@ async function ensureSchema() {
       CONSTRAINT fk_recibos_emp FOREIGN KEY (empleado_id) REFERENCES empleados(id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // Migracion para bases ya creadas: agrega recibos.empresa y la completa con la
+  // empresa actual del empleado, que es el mejor dato disponible para el historico.
+  if (!(await columnaExiste('recibos', 'empresa'))) {
+    await pool.query("ALTER TABLE recibos ADD COLUMN empresa VARCHAR(200) NOT NULL DEFAULT '' AFTER empleado_id");
+    const [r] = await pool.query(`
+      UPDATE recibos r
+      JOIN empleados e ON e.id = r.empleado_id
+      SET r.empresa = COALESCE(e.empresa, '')
+    `);
+    console.log(`Columna recibos.empresa agregada. Recibos actualizados: ${r.affectedRows}`);
+  }
 
   // firmas_empleados
   await pool.query(`

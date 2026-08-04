@@ -571,11 +571,11 @@ async function asignarEmpresaFicha(id, select) {
     if (emp) emp.empresa = empresa;
 
     showToast(data.message);
-    // La empresa tambien alimenta el modulo de empleados y los recibos de sueldo,
-    // asi que se refrescan sin perder los filtros que el admin tenga puestos.
+    // La empresa tambien alimenta el modulo de empleados y la carga de recibos, asi
+    // que se refrescan sin perder los filtros. Los recibos ya subidos no cambian:
+    // cada uno guarda la empresa que tenia el empleado al momento de la carga.
     filtrarEmpleados();
     filtrarSelectEmpleados();
-    cargarHistorialRecibos();
   } catch (err) {
     select.value = anterior;
     showToast(err.message, 'error');
@@ -1003,13 +1003,14 @@ async function cargarHistorialRecibos() {
 function renderHistorialRecibos(recibos) {
   const tbody = document.getElementById('tabla-recibos-historial');
   if (recibos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-500);padding:40px">No hay recibos que coincidan</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray-500);padding:40px">No hay recibos que coincidan</td></tr>';
     return;
   }
   tbody.innerHTML = recibos.map(r => `
     <tr>
       <td><strong>${r.empleado_nombre}</strong></td>
       <td>${r.dni}</td>
+      <td>${escAttr(r.empresa || '-')}</td>
       <td>${formatFecha(r.fecha_recibo)}</td>
       <td>${r.archivo_nombre}</td>
       <td>${r.descripcion || '-'}</td>

@@ -214,8 +214,8 @@ app.delete('/api/admin/empleados/:id', authAdmin, async (req, res) => {
   }
 });
 
-// Empresas habilitadas. Es el mismo valor que viaja en empleados.empresa y por el
-// que se filtran los recibos de sueldo, asi que hay una sola fuente de verdad.
+// Empresas habilitadas. Es el mismo valor que viaja en empleados.empresa y que se
+// copia en cada recibo al subirlo, asi que hay una sola fuente de verdad.
 const EMPRESAS = ['BTZ MINERA', 'PERFORACIONES IGLESIANAS'];
 
 // Listado de fichas personales de todos los empleados (una fila por empleado).
@@ -248,8 +248,8 @@ app.get('/api/admin/fichas', authAdmin, async (req, res) => {
   }
 });
 
-// Asigna la empresa del empleado. Es el mismo campo que usan los recibos de sueldo,
-// por lo que el cambio se refleja en el historial y en los filtros por empresa.
+// Asigna la empresa del empleado. Se aplica a los recibos que se suban de aqui en
+// mas; los ya cargados conservan la empresa que se guardo en su momento.
 app.put('/api/admin/empleados/:id/empresa', authAdmin, async (req, res) => {
   try {
     const empresa = (req.body.empresa || '').trim();
@@ -386,8 +386,8 @@ app.post('/api/admin/recibos', authAdmin, upload.array('pdfs', 50), async (req, 
         console.error('Error al estampar firma en', file.originalname, err);
       }
       await db.run(
-        'INSERT INTO recibos (empleado_id, fecha_recibo, archivo_nombre, archivo_path, descripcion) VALUES (?, ?, ?, ?, ?)',
-        [empleado_id, fecha_recibo, file.originalname, file.filename, descripcion || '']
+        'INSERT INTO recibos (empleado_id, empresa, fecha_recibo, archivo_nombre, archivo_path, descripcion) VALUES (?, ?, ?, ?, ?, ?)',
+        [empleado_id, empresa || '', fecha_recibo, file.originalname, file.filename, descripcion || '']
       );
     }
     res.json({ message: `${req.files.length} recibo(s) subido(s) exitosamente` });
@@ -442,8 +442,8 @@ app.post('/api/admin/recibos/masivo', authAdmin, upload.array('pdfs', 100), asyn
             console.error('Error al estampar firma en', file.originalname, err);
           }
           await db.run(
-            'INSERT INTO recibos (empleado_id, fecha_recibo, archivo_nombre, archivo_path, descripcion) VALUES (?, ?, ?, ?, ?)',
-            [empleadoId, fecha_recibo, file.originalname, file.filename, descripcion || '']
+            'INSERT INTO recibos (empleado_id, empresa, fecha_recibo, archivo_nombre, archivo_path, descripcion) VALUES (?, ?, ?, ?, ?, ?)',
+            [empleadoId, empresaMasivo, fecha_recibo, file.originalname, file.filename, descripcion || '']
           );
           asignados++;
         } else {
@@ -490,7 +490,8 @@ app.get('/api/admin/recibos', authAdmin, async (req, res) => {
     const db = getDb();
     const result = await db.exec(
       `SELECT r.id, r.empleado_id, r.fecha_recibo, r.archivo_nombre, r.archivo_path, r.descripcion, r.created_at,
-              e.nombre as empleado_nombre, e.dni, e.empresa,
+              r.empresa,
+              e.nombre as empleado_nombre, e.dni,
               CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END as firmado,
               f.fecha_firma,
               d.fecha_descarga
@@ -626,9 +627,6 @@ app.get('/api/recibo/descargar/:id', async (req, res) => {
 
           const firmaWidth = 150;
           const firmaHeight = (firmaImage.height / firmaImage.width) * firmaWidth;
-
-          const empEmpresaResult = await db.exec('SELECT empresa FROM empleados WHERE id = ?', [decoded.id]);
-          const empEmpresa = (empEmpresaResult.length > 0 && empEmpresaResult[0].values.length > 0) ? empEmpresaResult[0].values[0][0] : '';
 
           let firmaEmpleadoX = 25 + 227;
           let firmaEmpleadoY = 171 - 142;
@@ -922,12 +920,6 @@ app.get('/api/admin/recibo-firmado/:id', async (req, res) => {
     const pages = pdfDoc.getPages();
     const firmaWidth = 150;
     const firmaHeight = (firmaImage.height / firmaImage.width) * firmaWidth;
-
-    const empInfoResult = await db.exec(
-      'SELECT e.empresa FROM recibos r JOIN empleados e ON r.empleado_id = e.id WHERE r.id = ?',
-      [req.params.id]
-    );
-    const empEmpresaAdmin = (empInfoResult.length > 0 && empInfoResult[0].values.length > 0) ? empInfoResult[0].values[0][0] : '';
 
     let firmaEmpX = 25 + 227;
     let firmaEmpY = 171 - 142;
