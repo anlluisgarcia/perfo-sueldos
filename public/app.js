@@ -558,7 +558,7 @@ const CAMPOS_FICHA = [
   ['Contacto', [
     { k: 'tel_fijo', l: 'Tel. Fijo', t: 'text', max: 50 },
     { k: 'celular_empleado', l: 'Celular Empleado', t: 'text', max: 50 },
-    { k: 'celular_conyuge', l: 'Celular Cónyuge', t: 'text', max: 50 }
+    { k: 'celular_conyuge', l: 'Contacto Emergencia', t: 'text', max: 50 }
   ]],
   ['Ropa de Trabajo (Talles)', [
     { k: 'talle_camisa', l: 'Camisa', t: 'text', max: 20 },
@@ -803,6 +803,20 @@ function cerrarModalDatosEmpleado() {
 }
 
 // ---------- Imprimir ----------
+const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+// Lugar y fecha que cierran la declaracion jurada. Lleva la fecha en que se
+// guardo la ficha (updated_at); si todavia no se guardo nunca, va la del dia.
+// El replace del espacio por T es para el DATETIME de MySQL, que Safari no
+// parsea en su formato original.
+function lugarYFechaFicha(updatedAt) {
+  let f = updatedAt ? new Date(String(updatedAt).replace(' ', 'T')) : new Date();
+  if (isNaN(f.getTime())) f = new Date();
+  const dia = String(f.getDate()).padStart(2, '0');
+  return `San Juan ${dia} de ${MESES_ES[f.getMonth()]} de ${f.getFullYear()}`;
+}
+
 function fichaImprimibleHTML(data, logoDataUrl) {
   const d = Object.assign({}, data.datos || {}, { dni: data.dni });
   const secciones = CAMPOS_FICHA.filter(([titulo]) => titulo !== SECCION_CROQUIS).map(([titulo, campos]) => `
@@ -867,6 +881,9 @@ function fichaImprimibleHTML(data, logoDataUrl) {
       /* Solo el parrafo de la declaracion va justificado: con "p" a secas el
          justify tambien alcanzaba al pie de la firma y lo sacaba del centro. */
       .declaracion > p { font-size: 11px; line-height: 1.6; text-align: justify; margin: 0; }
+      /* El margen de 1.6em (un renglon del parrafo de arriba) es el renglon en
+         blanco que separa la declaracion del lugar y la fecha. */
+      .declaracion > p.declaracion-fecha { margin-top: 1.6em; text-align: left; }
       .croquis { margin: 12px 0 0; text-align: center; break-inside: avoid; }
       .croquis svg { width: 92mm; max-width: 100%; height: auto; }
       .croquis .calles { fill: none; stroke: #374151; stroke-width: 3; }
@@ -893,6 +910,7 @@ function fichaImprimibleHTML(data, logoDataUrl) {
     ${tablaBenef}
     <section class="declaracion">
       <p>Declaro bajo juramento que los datos antes consignados son fidedignos y me comprometo a informar cualquier modificación que se produzca a partir de la fecha, sirviendo los mismos a los efectos legales que pudiera corresponder.</p>
+      <p class="declaracion-fecha">${escAttr(lugarYFechaFicha(d.updated_at))}</p>
       ${croquis}
       <div class="firma">
         <div class="linea-firma"></div>

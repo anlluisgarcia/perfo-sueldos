@@ -321,7 +321,7 @@ const COLUMNAS_EXPORT = [
   ['Nombre Conyuge', 'nombre_conyuge', 20], ['Cantidad de Hijos', 'cantidad_hijos', 14],
   ['Banco', 'banco', 20], ['CBU', 'cbu', 26], ['Nro de Cuenta', 'nro_cuenta', 20],
   ['Tel. Fijo', 'tel_fijo', 16],
-  ['Celular Empleado', 'celular_empleado', 16], ['Celular Conyuge', 'celular_conyuge', 16],
+  ['Celular Empleado', 'celular_empleado', 16], ['Contacto Emergencia', 'celular_conyuge', 20],
   ['Talle Camisa', 'talle_camisa', 12], ['Talle Pantalon', 'talle_pantalon', 12],
   ['Talle Zapato', 'talle_zapato', 12], ['Talle Mameluco', 'talle_mameluco', 12],
   ['Croquis Calle 1', 'croquis_calle_1', 20], ['Croquis Calle 2', 'croquis_calle_2', 20],
