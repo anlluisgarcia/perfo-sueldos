@@ -935,6 +935,10 @@ tr:hover td {
   max-width: 480px;
 }
 
+.modal-cumpleanios-content {
+  max-width: 560px;
+}
+
 .firma-preview-modal {
   background: var(--gray-50);
   border: 1px solid var(--gray-200);
