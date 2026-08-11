@@ -98,6 +98,10 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
             <span>Alta Usuario</span>
           </button>
+          <button class="admin-tab" onclick="switchAdminTab('configuracion')">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V8a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>Configuraci&oacute;n</span>
+          </button>
         </nav>
       </aside>
 
@@ -562,6 +566,75 @@
               </thead>
               <tbody id="tabla-usuarios"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Configuracion -->
+      <div id="tab-configuracion" class="tab-content">
+        <div class="card">
+          <h2>Configuraci&oacute;n</h2>
+          <h3>Importar empleados desde el PDF de recibos</h3>
+          <div class="info-box">
+            Suba el PDF mensual con todos los recibos de haberes de la empresa. El sistema lee el
+            <strong>C.U.I.L.</strong> y el <strong>Apellido y nombre del empleado</strong> de cada recibo, compara
+            los DNI contra los empleados ya registrados y arma un listado con los empleados nuevos y los que ya
+            estaban dados de alta.
+          </div>
+          <form id="form-importar-pdf" onsubmit="subirPdfConfiguracion(event)">
+            <div class="form-group">
+              <label>Archivo PDF *</label>
+              <div class="upload-area" id="upload-area-config">
+                <input type="file" id="config-pdf-archivo" accept=".pdf">
+                <div class="upload-placeholder">
+                  <span class="upload-icon">&#128196;</span>
+                  <p>Haga clic o arrastre el PDF de recibos aqu&iacute;</p>
+                  <p class="upload-hint">M&aacute;ximo 10MB</p>
+                </div>
+                <div id="config-pdf-seleccionado" class="archivos-lista"></div>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Analizar PDF</button>
+          </form>
+
+          <div id="config-pdf-resultado" class="hidden" style="margin-top:20px">
+            <div id="config-pdf-resumen" class="resultado-msg"></div>
+
+            <div id="config-pdf-nuevos-container" class="hidden" style="margin-top:16px">
+              <div class="section-header">
+                <h3>Empleados nuevos detectados</h3>
+                <button class="btn btn-primary btn-sm" onclick="guardarNuevosEmpleadosImportados()">Guardar seleccionados</button>
+              </div>
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" id="config-check-todos" onchange="toggleTodosImportados()" checked></th>
+                      <th>Nombre completo</th>
+                      <th>DNI</th>
+                      <th>Clave (autom&aacute;tica)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="config-tabla-nuevos"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="config-pdf-existentes-container" class="hidden" style="margin-top:16px">
+              <h3>Empleados que ya estaban registrados</h3>
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre en el PDF</th>
+                      <th>DNI</th>
+                      <th>Nombre registrado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="config-tabla-existentes"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </div>

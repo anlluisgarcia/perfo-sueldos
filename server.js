@@ -75,6 +75,20 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }
 });
 
+// Solo para leer el contenido del PDF de recibos masivo (Configuracion > Importar
+// empleados): no hace falta guardarlo en disco, se descarta despues de parsearlo.
+const uploadMemoria = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos PDF'), false);
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
 // Auth
 function authAdmin(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
@@ -239,6 +253,138 @@ app.delete('/api/admin/empleados/:id', authAdmin, async (req, res) => {
   } catch (err) {
     console.error('Eliminar empleado error:', err);
     res.status(500).json({ error: 'Error al eliminar empleado' });
+  }
+});
+
+// ==================== RUTAS ADMIN - CONFIGURACION (IMPORTAR EMPLEADOS DESDE PDF) ====================
+
+// El PDF mensual de recibos trae cada recibo por duplicado (Original/Duplicado) uno
+// al lado del otro, asi que el texto extraido repite nombre y C.U.I.L. dos veces
+// seguidas por empleado. Se colapsan las repeticiones consecutivas para quedarse
+// con una fila por persona.
+function extraerEmpleadosDePdf(texto) {
+  const nameRegex = /^[A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'-]*\s*,\s*[A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ .'-]*$/gm;
+  const rawNombres = (texto.match(nameRegex) || [])
+    .map(s => s.trim().replace(/\s+,/, ',').replace(/\s+/g, ' '));
+
+  // C.U.I.L. de persona fisica: 20-XXXXXXXX-X, 23-, 24-, 27-, etc. Se excluyen los
+  // prefijos 30/33/34 porque son C.U.I.T. de empresa (aparece el de BTZ MINERA repetido
+  // en cada pagina) y no corresponden a un empleado.
+  const cuilRegex = /\b(\d{2})-(\d{7,8})-(\d)\b/g;
+  const prefijosEmpresa = new Set(['30', '33', '34']);
+  const rawCuils = [];
+  let m;
+  while ((m = cuilRegex.exec(texto)) !== null) {
+    if (prefijosEmpresa.has(m[1])) continue;
+    rawCuils.push({ cuil: m[0], dni: m[2] });
+  }
+
+  function dedupeConsecutivos(arr, keyFn) {
+    const out = [];
+    for (const v of arr) {
+      const key = keyFn(v);
+      const prevKey = out.length ? keyFn(out[out.length - 1]) : null;
+      if (key !== prevKey) out.push(v);
+    }
+    return out;
+  }
+
+  const nombres = dedupeConsecutivos(rawNombres, x => x);
+  const cuils = dedupeConsecutivos(rawCuils, x => x.cuil);
+
+  const registros = [];
+  const n = Math.min(nombres.length, cuils.length);
+  for (let i = 0; i < n; i++) {
+    registros.push({ nombre: nombres[i], dni: cuils[i].dni });
+  }
+  return registros;
+}
+
+app.post('/api/admin/configuracion/importar-pdf', authAdmin, noOperador, uploadMemoria.single('pdf'), async (req, res) => {
+  // Se carga aca y no arriba: si en el servidor falta la dependencia (deploy sin
+  // npm install), solo deja de andar esta importacion y no el portal entero.
+  let pdfParse;
+  try {
+    pdfParse = require('pdf-parse');
+  } catch {
+    console.error('Falta la dependencia pdf-parse. Ejecute npm install en el servidor.');
+    return res.status(500).json({ error: 'La importacion no esta disponible: falta instalar la dependencia pdf-parse en el servidor' });
+  }
+
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Debe adjuntar un archivo PDF' });
+
+    const { text } = await pdfParse(req.file.buffer);
+    const registros = extraerEmpleadosDePdf(text);
+    if (registros.length === 0) {
+      return res.status(400).json({ error: 'No se pudo detectar ningun empleado en el PDF. Verifique que sea un recibo de haberes con el formato habitual (C.U.I.L. y Apellido y nombre del empleado).' });
+    }
+
+    const db = getDb();
+    const existentesResult = await db.exec('SELECT nombre, dni FROM empleados');
+    const registrados = new Map();
+    if (existentesResult.length > 0) {
+      const columns = existentesResult[0].columns;
+      existentesResult[0].values.forEach(row => {
+        const obj = {};
+        columns.forEach((col, i) => obj[col] = row[i]);
+        registrados.set(obj.dni, obj.nombre);
+      });
+    }
+
+    const nuevos = [];
+    const existentes = [];
+    const vistos = new Set();
+    for (const reg of registros) {
+      if (vistos.has(reg.dni)) continue; // el mismo empleado aparecio mas de una vez en el PDF
+      vistos.add(reg.dni);
+      if (registrados.has(reg.dni)) {
+        existentes.push({ nombre: reg.nombre, dni: reg.dni, nombreRegistrado: registrados.get(reg.dni) });
+      } else {
+        nuevos.push(reg);
+      }
+    }
+
+    res.json({ total: vistos.size, nuevos, existentes });
+  } catch (err) {
+    console.error('Importar PDF error:', err);
+    res.status(500).json({ error: 'Error al procesar el PDF' });
+  }
+});
+
+app.post('/api/admin/configuracion/importar-pdf/guardar', authAdmin, noOperador, async (req, res) => {
+  try {
+    const { empleados } = req.body;
+    if (!Array.isArray(empleados) || empleados.length === 0) {
+      return res.status(400).json({ error: 'No se recibieron empleados para guardar' });
+    }
+
+    const db = getDb();
+    let creados = 0;
+    const omitidos = [];
+
+    for (const emp of empleados) {
+      const nombre = (emp.nombre || '').trim();
+      const dni = (emp.dni || '').trim();
+      if (!nombre || !/^\d{7,8}$/.test(dni)) {
+        omitidos.push({ nombre, dni, motivo: 'Datos invalidos' });
+        continue;
+      }
+      const existing = await db.exec('SELECT id FROM empleados WHERE dni = ?', [dni]);
+      if (existing.length > 0 && existing[0].values.length > 0) {
+        omitidos.push({ nombre, dni, motivo: 'Ya existe un empleado con ese DNI' });
+        continue;
+      }
+      const clave = dni.slice(-4);
+      const hash = bcrypt.hashSync(clave, 10);
+      await db.run('INSERT INTO empleados (nombre, dni, clave) VALUES (?, ?, ?)', [nombre, dni, hash]);
+      creados++;
+    }
+
+    res.json({ message: `${creados} empleado(s) creado(s) exitosamente`, creados, omitidos });
+  } catch (err) {
+    console.error('Guardar empleados importados error:', err);
+    res.status(500).json({ error: 'Error al guardar los empleados' });
   }
 });
 

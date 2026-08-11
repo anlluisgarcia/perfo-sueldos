@@ -310,13 +310,16 @@ async function cargarDashboard() {
   cargarFirmasAdmin();
   cargarHistorialRecibos();
 
-  // Ocultar tab "Alta Usuario" para operadores
+  // Ocultar tabs "Alta Usuario" y "Configuración" para operadores
   const permiso = localStorage.getItem('userPermiso');
   const tabUsuarios = document.querySelector('.admin-tab[onclick*="usuarios"]');
-  if (permiso === 'operador' && tabUsuarios) {
-    tabUsuarios.style.display = 'none';
-  } else if (tabUsuarios) {
-    tabUsuarios.style.display = '';
+  const tabConfiguracion = document.querySelector('.admin-tab[onclick*="configuracion"]');
+  if (permiso === 'operador') {
+    if (tabUsuarios) tabUsuarios.style.display = 'none';
+    if (tabConfiguracion) tabConfiguracion.style.display = 'none';
+  } else {
+    if (tabUsuarios) tabUsuarios.style.display = '';
+    if (tabConfiguracion) tabConfiguracion.style.display = '';
   }
 }
 
@@ -1192,6 +1195,7 @@ function switchUploadMode(mode) {
 document.addEventListener('DOMContentLoaded', () => {
   setupFileInput('recibo-archivos', 'archivos-seleccionados');
   setupFileInput('recibo-archivos-masivo', 'archivos-seleccionados-masivo');
+  setupFileInput('config-pdf-archivo', 'config-pdf-seleccionado');
 
   llenarSelectAnios('recibo-anio', false);
   llenarSelectAnios('recibo-masivo-anio', false);
@@ -1318,6 +1322,123 @@ async function subirReciboMasivo(e) {
     resultadoEl.className = 'error';
     resultadoEl.textContent = err.message;
     resultadoEl.classList.remove('hidden');
+    showToast(err.message, 'error');
+  }
+}
+
+// ==================== CONFIGURACION - IMPORTAR EMPLEADOS DESDE PDF ====================
+let importacionPdfNuevos = [];
+
+async function subirPdfConfiguracion(e) {
+  e.preventDefault();
+  const input = document.getElementById('config-pdf-archivo');
+  if (!input.files || input.files.length === 0) {
+    showToast('Seleccione un archivo PDF', 'error');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('pdf', input.files[0]);
+
+  const resultadoEl = document.getElementById('config-pdf-resultado');
+  const resumenEl = document.getElementById('config-pdf-resumen');
+  try {
+    const res = await fetch(`${API}/api/admin/configuracion/importar-pdf`, {
+      method: 'POST',
+      headers: headersAuth(),
+      body: formData
+    });
+    const data = await leerJson(res);
+    if (!res.ok) throw new Error(data.error);
+
+    importacionPdfNuevos = data.nuevos;
+    resultadoEl.classList.remove('hidden');
+    resumenEl.className = 'resultado-msg success';
+    resumenEl.textContent = `Se detectaron ${data.total} empleado(s) en el PDF: ${data.nuevos.length} nuevo(s) y ${data.existentes.length} ya registrado(s).`;
+
+    renderNuevosImportados(data.nuevos);
+    renderExistentesImportados(data.existentes);
+  } catch (err) {
+    importacionPdfNuevos = [];
+    resultadoEl.classList.remove('hidden');
+    resumenEl.className = 'resultado-msg error';
+    resumenEl.textContent = err.message;
+    document.getElementById('config-pdf-nuevos-container').classList.add('hidden');
+    document.getElementById('config-pdf-existentes-container').classList.add('hidden');
+    showToast(err.message, 'error');
+  }
+}
+
+function renderNuevosImportados(nuevos) {
+  const container = document.getElementById('config-pdf-nuevos-container');
+  const tbody = document.getElementById('config-tabla-nuevos');
+  if (!nuevos || nuevos.length === 0) {
+    container.classList.add('hidden');
+    tbody.innerHTML = '';
+    return;
+  }
+  container.classList.remove('hidden');
+  document.getElementById('config-check-todos').checked = true;
+  tbody.innerHTML = nuevos.map((emp, i) => `
+    <tr>
+      <td><input type="checkbox" class="config-check-nuevo" data-idx="${i}" checked></td>
+      <td>${emp.nombre}</td>
+      <td>${emp.dni}</td>
+      <td>${emp.dni.slice(-4)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderExistentesImportados(existentes) {
+  const container = document.getElementById('config-pdf-existentes-container');
+  const tbody = document.getElementById('config-tabla-existentes');
+  if (!existentes || existentes.length === 0) {
+    container.classList.add('hidden');
+    tbody.innerHTML = '';
+    return;
+  }
+  container.classList.remove('hidden');
+  tbody.innerHTML = existentes.map(emp => `
+    <tr>
+      <td>${emp.nombre}</td>
+      <td>${emp.dni}</td>
+      <td>${emp.nombreRegistrado}</td>
+    </tr>
+  `).join('');
+}
+
+function toggleTodosImportados() {
+  const marcar = document.getElementById('config-check-todos').checked;
+  document.querySelectorAll('.config-check-nuevo').forEach(c => c.checked = marcar);
+}
+
+async function guardarNuevosEmpleadosImportados() {
+  const seleccionados = [];
+  document.querySelectorAll('.config-check-nuevo').forEach(chk => {
+    if (chk.checked) seleccionados.push(importacionPdfNuevos[parseInt(chk.dataset.idx)]);
+  });
+  if (seleccionados.length === 0) {
+    showToast('Seleccione al menos un empleado nuevo para guardar', 'error');
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/api/admin/configuracion/importar-pdf/guardar`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ empleados: seleccionados })
+    });
+    const data = await leerJson(res);
+    if (!res.ok) throw new Error(data.error);
+    showToast(data.message);
+    if (data.omitidos && data.omitidos.length > 0) {
+      showToast(`${data.omitidos.length} no se guardaron (ya existían o datos inválidos)`, 'error');
+    }
+    document.getElementById('config-pdf-resultado').classList.add('hidden');
+    document.getElementById('form-importar-pdf').reset();
+    document.getElementById('config-pdf-seleccionado').innerHTML = '';
+    importacionPdfNuevos = [];
+    cargarEmpleados();
+    cargarEstadisticas();
+  } catch (err) {
     showToast(err.message, 'error');
   }
 }
