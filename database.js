@@ -172,6 +172,7 @@ async function ensureSchema() {
       obra_social VARCHAR(5) NOT NULL DEFAULT '',
       carnet_conducir VARCHAR(5) NOT NULL DEFAULT '',
       carnet_clases VARCHAR(255) NOT NULL DEFAULT '',
+      carnet_vencimiento DATE NULL,
       carnet_comentario TEXT,
       nivel_estudio VARCHAR(60) NOT NULL DEFAULT '',
       profesion VARCHAR(120) NOT NULL DEFAULT '',
@@ -216,6 +217,13 @@ async function ensureSchema() {
       await pool.query(`ALTER TABLE empleados_datos ADD COLUMN ${col} ${tipo} NOT NULL DEFAULT ''`);
       console.log(`Columna empleados_datos.${col} agregada`);
     }
+  }
+
+  // Migracion: fecha de vencimiento del carnet de conducir (DATE, admite NULL a
+  // diferencia de las columnas de texto de arriba).
+  if (!(await columnaExiste('empleados_datos', 'carnet_vencimiento'))) {
+    await pool.query('ALTER TABLE empleados_datos ADD COLUMN carnet_vencimiento DATE NULL AFTER carnet_clases');
+    console.log('Columna empleados_datos.carnet_vencimiento agregada');
   }
 
   // empleados_beneficiarios (beneficiarios del seguro, varios por empleado)

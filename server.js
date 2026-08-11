@@ -466,6 +466,7 @@ const COLUMNAS_EXPORT = [
   ['Codigo Postal', 'codigo_postal', 12], ['Provincia', 'provincia', 22],
   ['Pais', 'pais', 18], ['Obra Social', 'obra_social', 12],
   ['Carnet Conducir', 'carnet_conducir', 14], ['Clases Carnet', 'carnet_clases', 18],
+  ['Vencimiento Carnet', 'carnet_vencimiento', 16],
   ['Comentario Carnet', 'carnet_comentario', 30], ['Nivel de Estudio', 'nivel_estudio', 22],
   ['Profesion', 'profesion', 20], ['Apellido Conyuge', 'apellido_conyuge', 20],
   ['Nombre Conyuge', 'nombre_conyuge', 20], ['Cantidad de Hijos', 'cantidad_hijos', 14],
@@ -547,6 +548,7 @@ app.get('/api/admin/fichas/export', authAdmin, async (req, res) => {
       hoja.addRow(Object.assign({}, emp, {
         empresa: emp.empresa || 'Sin asignar',
         fecha_nacimiento: fechaDDMMAAAA(emp.fecha_nacimiento),
+        carnet_vencimiento: fechaDDMMAAAA(emp.carnet_vencimiento),
         actualizado: emp.updated_at ? fechaDDMMAAAA(emp.updated_at) : ''
       }));
     });
@@ -1095,7 +1097,7 @@ app.get('/api/empleado/perfil', authEmpleado, async (req, res) => {
 const CAMPOS_DATOS = [
   'apellidos', 'nombres', 'email', 'estado_civil', 'cuit', 'fecha_nacimiento', 'sexo',
   'grupo_sanguineo', 'nacionalidad', 'domicilio', 'localidad', 'codigo_postal', 'provincia',
-  'pais', 'obra_social', 'carnet_conducir', 'carnet_clases', 'carnet_comentario',
+  'pais', 'obra_social', 'carnet_conducir', 'carnet_clases', 'carnet_vencimiento', 'carnet_comentario',
   'nivel_estudio', 'profesion', 'apellido_conyuge', 'nombre_conyuge', 'cantidad_hijos',
   'banco', 'cbu', 'nro_cuenta', 'tel_fijo', 'celular_empleado', 'celular_conyuge',
   'talle_camisa', 'talle_pantalon', 'talle_zapato', 'talle_mameluco',
@@ -1111,7 +1113,7 @@ function normalizarTexto(campo, valor) {
 }
 
 function normalizarCampoDato(campo, valor) {
-  if (campo === 'fecha_nacimiento') {
+  if (campo === 'fecha_nacimiento' || campo === 'carnet_vencimiento') {
     const v = (valor || '').toString().trim();
     return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
   }

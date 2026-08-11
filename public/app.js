@@ -544,6 +544,7 @@ const CAMPOS_FICHA = [
   ['Carnet de conducir y estudios', [
     { k: 'carnet_conducir', l: 'Carnet de Conducción', t: 'select', op: ['SI', 'NO'] },
     { k: 'carnet_clases', l: 'Clases del carnet', t: 'clases', ancho: true },
+    { k: 'carnet_vencimiento', l: 'Fecha Vencimiento', t: 'date', ancho: true },
     { k: 'carnet_comentario', l: 'Comentario', t: 'textarea', ancho: true },
     { k: 'nivel_estudio', l: 'Nivel de Estudio', t: 'select', op: NIVELES_ESTUDIO },
     { k: 'profesion', l: 'Profesión', t: 'text', max: 120 }
@@ -699,6 +700,7 @@ function toggleCarnetFicha() {
   document.getElementById('ficha-carnet-detalle').classList.toggle('hidden', !tiene);
   if (!tiene) {
     document.querySelectorAll('.af-clase').forEach(c => c.checked = false);
+    document.getElementById('af-carnet_vencimiento').value = '';
     document.getElementById('af-carnet_comentario').value = '';
   }
 }
@@ -716,7 +718,7 @@ function leerFormularioFicha() {
     }
     const el = document.getElementById(`af-${c.k}`);
     if (!el) return;
-    if (c.k === 'carnet_comentario' && !tieneCarnet) { payload[c.k] = ''; return; }
+    if ((c.k === 'carnet_vencimiento' || c.k === 'carnet_comentario') && !tieneCarnet) { payload[c.k] = ''; return; }
     if (c.t === 'paises' && el.value === VALOR_OTRO) {
       payload[c.k] = document.getElementById(`af-${c.k}-otro`).value.trim();
       return;
@@ -2245,6 +2247,7 @@ function toggleCarnetConducir() {
   document.getElementById('carnet-detalle').classList.toggle('hidden', !tiene);
   if (!tiene) {
     document.querySelectorAll('.carnet-clase').forEach(c => c.checked = false);
+    document.getElementById('dato-carnet-vencimiento').value = '';
     document.getElementById('dato-carnet-comentario').value = '';
   }
 }
@@ -2361,6 +2364,7 @@ async function cargarMisDatos() {
     // aparecen igual y no se pierden al guardar.
     const clases = mayus(d.carnet_clases).split(',').map(c => c.trim()).filter(Boolean);
     document.getElementById('carnet-clases').innerHTML = checkboxesClasesHTML('carnet-clase', clases);
+    document.getElementById('dato-carnet-vencimiento').value = (d.carnet_vencimiento || '').substring(0, 10);
     document.getElementById('dato-carnet-comentario').value = mayus(d.carnet_comentario);
     document.getElementById('carnet-detalle').classList.toggle('hidden', mayus(d.carnet_conducir) !== 'SI');
 
@@ -2420,6 +2424,7 @@ async function guardarMisDatos(e) {
     obra_social: document.getElementById('dato-obra-social').value,
     carnet_conducir: carnet,
     carnet_clases: carnet === 'SI' ? clases : '',
+    carnet_vencimiento: carnet === 'SI' ? document.getElementById('dato-carnet-vencimiento').value : '',
     carnet_comentario: carnet === 'SI' ? document.getElementById('dato-carnet-comentario').value.trim() : '',
     nivel_estudio: document.getElementById('dato-nivel-estudio').value,
     profesion: document.getElementById('dato-profesion').value.trim(),
