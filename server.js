@@ -1526,6 +1526,56 @@ app.get('/api/admin/estadisticas', authAdmin, async (req, res) => {
   }
 });
 
+// Calcula cuantos dias faltan para el proximo cumpleanos (mes/dia de
+// fechaNacimiento), tomando como "hoy" el dia calendario del servidor.
+// Da 0 si es hoy, o la cantidad de dias si ya paso este año y hay que
+// esperar al que viene.
+function diasParaProximoCumple(fechaNacimiento, hoy) {
+  const partes = String(fechaNacimiento).slice(0, 10).split('-');
+  if (partes.length !== 3) return null;
+  const mes = parseInt(partes[1], 10) - 1;
+  const dia = parseInt(partes[2], 10);
+  if (!Number.isFinite(mes) || !Number.isFinite(dia)) return null;
+
+  const hoyLocal = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  let proximo = new Date(hoyLocal.getFullYear(), mes, dia);
+  if (proximo < hoyLocal) proximo = new Date(hoyLocal.getFullYear() + 1, mes, dia);
+  return Math.round((proximo - hoyLocal) / (1000 * 60 * 60 * 24));
+}
+
+// Empleados que cumplen hoy o dentro de los proximos 3 dias, para el aviso
+// emergente que ve el admin al entrar al panel.
+app.get('/api/admin/cumpleanios', authAdmin, async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.exec(`
+      SELECT e.nombre, d.fecha_nacimiento
+      FROM empleados e
+      JOIN empleados_datos d ON d.empleado_id = e.id
+      WHERE e.estado = 'activo' AND d.fecha_nacimiento IS NOT NULL
+    `);
+
+    const hoy = new Date();
+    const cumpleHoy = [];
+    const proximos = [];
+
+    if (result.length > 0) {
+      result[0].values.forEach(([nombre, fechaNacimiento]) => {
+        const dias = diasParaProximoCumple(fechaNacimiento, hoy);
+        if (dias === null) return;
+        if (dias === 0) cumpleHoy.push({ nombre, fecha_nacimiento: fechaNacimiento });
+        else if (dias <= 3) proximos.push({ nombre, fecha_nacimiento: fechaNacimiento, dias });
+      });
+    }
+
+    proximos.sort((a, b) => a.dias - b.dias);
+    res.json({ hoy: cumpleHoy, proximos });
+  } catch (err) {
+    console.error('Cumpleanios error:', err);
+    res.status(500).json({ error: 'Error al obtener los cumpleaños' });
+  }
+});
+
 // ==================== INICIAR SERVIDOR ====================
 async function start() {
   await initDatabase();

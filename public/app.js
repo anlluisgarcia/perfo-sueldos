@@ -309,6 +309,7 @@ async function cargarDashboard() {
   cargarEmpleados();
   cargarFirmasAdmin();
   cargarHistorialRecibos();
+  verificarCumpleanios();
 
   // Ocultar tabs "Alta Usuario" y "Configuración" para operadores
   const permiso = localStorage.getItem('userPermiso');
@@ -348,6 +349,44 @@ async function cargarEstadisticas() {
   } catch (err) {
     console.error(err);
   }
+}
+
+// ==================== CUMPLEAÑOS ====================
+async function verificarCumpleanios() {
+  try {
+    const res = await fetch(`${API}/api/admin/cumpleanios`, { headers: headersAuth() });
+    const data = await leerJson(res);
+    if (!res.ok) throw new Error(data.error);
+
+    const hoy = data.hoy || [];
+    const proximos = data.proximos || [];
+    if (hoy.length === 0 && proximos.length === 0) return;
+
+    let html = '';
+    if (hoy.length > 0) {
+      html += hoy.map(e => `<p class="cumple-hoy">&#127881; HOY CUMPLE ${e.nombre}</p>`).join('');
+    }
+    if (proximos.length > 0) {
+      html += '<p class="cumple-proximos-titulo">Se aproxima el cumplea&ntilde;os de:</p>';
+      html += '<ul class="cumple-proximos-lista">' + proximos.map(e =>
+        `<li>${e.nombre} &mdash; ${formatFechaCorta(e.fecha_nacimiento)} (en ${e.dias} d&iacute;a${e.dias === 1 ? '' : 's'})</li>`
+      ).join('') + '</ul>';
+    }
+
+    document.getElementById('modal-cumpleanios-cuerpo').innerHTML = html;
+    document.getElementById('modal-cumpleanios').classList.remove('hidden');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function formatFechaCorta(fecha) {
+  const partes = String(fecha || '').substring(0, 10).split('-');
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}` : '';
+}
+
+function cerrarModalCumpleanios() {
+  document.getElementById('modal-cumpleanios').classList.add('hidden');
 }
 
 // ==================== ADMIN TABS ====================
