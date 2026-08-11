@@ -4,6 +4,10 @@ const bcrypt = require('bcryptjs');
 
 let pool;
 
+// Menus del panel admin que se pueden habilitar/deshabilitar por usuario (ver
+// tambien MENUS_VALIDOS en server.js, que valida contra esta misma lista).
+const MENUS_TODOS = 'empleados,fichas,firmas,recibos,historial,usuarios,configuracion';
+
 const DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -62,9 +66,17 @@ async function ensureSchema() {
       nombre VARCHAR(200) NOT NULL,
       estado ENUM('activo','inactivo') NOT NULL DEFAULT 'activo',
       permiso ENUM('administrativo','supervisor','operador') NOT NULL DEFAULT 'administrativo',
+      menus VARCHAR(255) NOT NULL DEFAULT '${MENUS_TODOS}',
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // Migracion: menus habilitados por usuario admin. El DEFAULT completo hace que las
+  // cuentas ya existentes no pierdan acceso a nada al aplicar este cambio.
+  if (!(await columnaExiste('administradores', 'menus'))) {
+    await pool.query(`ALTER TABLE administradores ADD COLUMN menus VARCHAR(255) NOT NULL DEFAULT '${MENUS_TODOS}'`);
+    console.log('Columna administradores.menus agregada');
+  }
 
   // empleados
   await pool.query(`

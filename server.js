@@ -137,8 +137,9 @@ app.post('/api/admin/login', async (req, res) => {
     if (adminObj.estado === 'inactivo') {
       return res.status(403).json({ error: 'Su cuenta está inactiva. Contacte al administrador.' });
     }
-    const token = jwt.sign({ id: adminObj.id, usuario: adminObj.usuario, rol: 'admin', permiso: adminObj.permiso || 'administrativo' }, JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, nombre: adminObj.nombre, permiso: adminObj.permiso || 'administrativo' });
+    const menus = adminObj.menus || MENUS_TODOS;
+    const token = jwt.sign({ id: adminObj.id, usuario: adminObj.usuario, rol: 'admin', permiso: adminObj.permiso || 'administrativo', menus }, JWT_SECRET, { expiresIn: '8h' });
+    res.json({ token, nombre: adminObj.nombre, permiso: adminObj.permiso || 'administrativo', menus });
   } catch (err) {
     console.error('Login admin error:', err);
     res.status(500).json({ error: 'Error en el servidor' });
@@ -174,7 +175,7 @@ app.post('/api/empleado/login', async (req, res) => {
 
 // ==================== RUTAS ADMIN - EMPLEADOS ====================
 
-app.get('/api/admin/empleados', authAdmin, async (req, res) => {
+app.get('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec('SELECT id, nombre, dni, telefono, direccion, empresa, estado, created_at FROM empleados ORDER BY nombre');
@@ -192,7 +193,7 @@ app.get('/api/admin/empleados', authAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/admin/empleados', authAdmin, async (req, res) => {
+app.post('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
     const { nombre, dni, clave, telefono, direccion, empresa } = req.body;
     if (!nombre || !dni || !clave) {
@@ -215,7 +216,7 @@ app.post('/api/admin/empleados', authAdmin, async (req, res) => {
   }
 });
 
-app.put('/api/admin/empleados/:id', authAdmin, async (req, res) => {
+app.put('/api/admin/empleados/:id', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
     const { nombre, dni, clave, telefono, direccion, empresa, estado } = req.body;
     const id = parseInt(req.params.id);
@@ -239,7 +240,7 @@ app.put('/api/admin/empleados/:id', authAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/empleados/:id', authAdmin, async (req, res) => {
+app.delete('/api/admin/empleados/:id', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
     const db = getDb();
     await db.run('DELETE FROM firmas_recibos WHERE empleado_id = ?', [req.params.id]);
@@ -300,7 +301,7 @@ function extraerEmpleadosDePdf(texto) {
   return registros;
 }
 
-app.post('/api/admin/configuracion/importar-pdf', authAdmin, noOperador, uploadMemoria.single('pdf'), async (req, res) => {
+app.post('/api/admin/configuracion/importar-pdf', authAdmin, noOperador, requiereMenu('configuracion'), uploadMemoria.single('pdf'), async (req, res) => {
   // Se carga aca y no arriba: si en el servidor falta la dependencia (deploy sin
   // npm install), solo deja de andar esta importacion y no el portal entero.
   let pdfParse;
@@ -352,7 +353,7 @@ app.post('/api/admin/configuracion/importar-pdf', authAdmin, noOperador, uploadM
   }
 });
 
-app.post('/api/admin/configuracion/importar-pdf/guardar', authAdmin, noOperador, async (req, res) => {
+app.post('/api/admin/configuracion/importar-pdf/guardar', authAdmin, noOperador, requiereMenu('configuracion'), async (req, res) => {
   try {
     const { empleados, empresa } = req.body;
     if (!Array.isArray(empleados) || empleados.length === 0) {
@@ -397,7 +398,7 @@ app.post('/api/admin/configuracion/importar-pdf/guardar', authAdmin, noOperador,
 const EMPRESAS = ['BTZ MINERA', 'PERFORACIONES IGLESIANAS'];
 
 // Listado de fichas personales de todos los empleados (una fila por empleado).
-app.get('/api/admin/fichas', authAdmin, async (req, res) => {
+app.get('/api/admin/fichas', authAdmin, requiereMenu('fichas'), async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec(`
@@ -498,7 +499,7 @@ function estiloEncabezado(hoja) {
   hoja.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: hoja.columnCount } };
 }
 
-app.get('/api/admin/fichas/export', authAdmin, async (req, res) => {
+app.get('/api/admin/fichas/export', authAdmin, requiereMenu('fichas'), async (req, res) => {
   // Se carga aca y no arriba: si en el servidor falta la dependencia (deploy sin
   // npm install), solo deja de andar la exportacion y no el portal entero.
   let ExcelJS;
@@ -589,7 +590,7 @@ app.get('/api/admin/fichas/export', authAdmin, async (req, res) => {
 
 // Asigna la empresa del empleado. Se aplica a los recibos que se suban de aqui en
 // mas; los ya cargados conservan la empresa que se guardo en su momento.
-app.put('/api/admin/empleados/:id/empresa', authAdmin, async (req, res) => {
+app.put('/api/admin/empleados/:id/empresa', authAdmin, requiereMenu('fichas'), async (req, res) => {
   try {
     const empresa = (req.body.empresa || '').trim();
     if (empresa && !EMPRESAS.includes(empresa)) {
@@ -609,7 +610,7 @@ app.put('/api/admin/empleados/:id/empresa', authAdmin, async (req, res) => {
 });
 
 // Ficha personal de un empleado, en modo consulta para el administrador.
-app.get('/api/admin/empleados/:id/datos', authAdmin, async (req, res) => {
+app.get('/api/admin/empleados/:id/datos', authAdmin, requiereMenu('empleados', 'fichas'), async (req, res) => {
   try {
     const db = getDb();
     const empResult = await db.exec('SELECT nombre, dni, empresa FROM empleados WHERE id = ?', [req.params.id]);
@@ -687,7 +688,7 @@ function periodoValido(periodo) {
   return /^\d{4}-(0[1-9]|1[0-2]|SAC[12])$/.test(periodo || '');
 }
 
-app.post('/api/admin/recibos', authAdmin, upload.array('pdfs', 50), async (req, res) => {
+app.post('/api/admin/recibos', authAdmin, requiereMenu('recibos'), upload.array('pdfs', 50), async (req, res) => {
   try {
     const { empleado_id, fecha_recibo, descripcion } = req.body;
     if (!empleado_id || !fecha_recibo) {
@@ -736,7 +737,7 @@ app.post('/api/admin/recibos', authAdmin, upload.array('pdfs', 50), async (req, 
   }
 });
 
-app.post('/api/admin/recibos/masivo', authAdmin, upload.array('pdfs', 100), async (req, res) => {
+app.post('/api/admin/recibos/masivo', authAdmin, requiereMenu('recibos'), upload.array('pdfs', 100), async (req, res) => {
   try {
     const { fecha_recibo, descripcion } = req.body;
     if (!fecha_recibo) {
@@ -803,7 +804,7 @@ app.post('/api/admin/recibos/masivo', authAdmin, upload.array('pdfs', 100), asyn
   }
 });
 
-app.get('/api/admin/recibos/:empleadoId', authAdmin, async (req, res) => {
+app.get('/api/admin/recibos/:empleadoId', authAdmin, requiereMenu('historial'), async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec(
@@ -824,7 +825,7 @@ app.get('/api/admin/recibos/:empleadoId', authAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/admin/recibos', authAdmin, async (req, res) => {
+app.get('/api/admin/recibos', authAdmin, requiereMenu('historial'), async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec(
@@ -858,7 +859,7 @@ app.get('/api/admin/recibos', authAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/recibos/:id', authAdmin, async (req, res) => {
+app.delete('/api/admin/recibos/:id', authAdmin, requiereMenu('historial'), async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec('SELECT archivo_path FROM recibos WHERE id = ?', [req.params.id]);
@@ -1259,7 +1260,7 @@ app.post('/api/empleado/mis-datos', authEmpleado, async (req, res) => {
 });
 
 // El admin edita la ficha de cualquier empleado desde el listado de Datos Empleados.
-app.put('/api/admin/empleados/:id/datos', authAdmin, async (req, res) => {
+app.put('/api/admin/empleados/:id/datos', authAdmin, requiereMenu('empleados', 'fichas'), async (req, res) => {
   try {
     const db = getDb();
     const existe = await db.exec('SELECT id FROM empleados WHERE id = ?', [req.params.id]);
@@ -1350,7 +1351,7 @@ app.get('/api/admin/recibo-firmado/:id', async (req, res) => {
 
 // ==================== ADMIN - FIRMA ADMINISTRATIVA ====================
 
-app.get('/api/admin/firma', authAdmin, async (req, res) => {
+app.get('/api/admin/firma', authAdmin, requiereMenu('firmas'), async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec('SELECT firma_data, updated_at FROM firma_admin WHERE id = 1');
@@ -1368,7 +1369,7 @@ app.get('/api/admin/firma', authAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/admin/firma', authAdmin, async (req, res) => {
+app.post('/api/admin/firma', authAdmin, requiereMenu('firmas'), async (req, res) => {
   try {
     const { firma_data } = req.body;
     if (!firma_data) {
@@ -1388,7 +1389,7 @@ app.post('/api/admin/firma', authAdmin, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/firma', authAdmin, async (req, res) => {
+app.delete('/api/admin/firma', authAdmin, requiereMenu('firmas'), async (req, res) => {
   try {
     const db = getDb();
     await db.run('DELETE FROM firma_admin WHERE id = 1');
@@ -1408,10 +1409,36 @@ function noOperador(req, res, next) {
   next();
 }
 
-app.get('/api/admin/usuarios', authAdmin, noOperador, async (req, res) => {
+// Menus del panel que se pueden habilitar/deshabilitar por usuario, ademas del
+// permiso (administrativo/supervisor/operador). Un usuario nuevo se crea con todos
+// habilitados; ver checkboxesMenusHTML() en app.js para la misma lista del lado UI.
+const MENUS_VALIDOS = ['empleados', 'fichas', 'firmas', 'recibos', 'historial', 'usuarios', 'configuracion'];
+const MENUS_TODOS = MENUS_VALIDOS.join(',');
+
+// Exige que el usuario tenga habilitado alguno de los menus indicados. Los tokens
+// emitidos antes de este cambio no traen "menus" en el JWT: se los deja pasar (no
+// se puede saber que tenian antes) hasta que vuelvan a iniciar sesion.
+function requiereMenu(...clavesPermitidas) {
+  return (req, res, next) => {
+    if (req.user.menus === undefined) return next();
+    const menus = String(req.user.menus || '').split(',').map(m => m.trim()).filter(Boolean);
+    if (clavesPermitidas.some(c => menus.includes(c))) return next();
+    return res.status(403).json({ error: 'No tiene acceso a este módulo' });
+  };
+}
+
+// Filtra la lista de menus recibida del formulario contra las claves validas. Si no
+// vino nada (cliente viejo / peticion malformada) se asume acceso completo; si vino
+// una lista (aunque quede vacia tras filtrar) se respeta tal cual la eligio el admin.
+function normalizarMenus(menus) {
+  if (!Array.isArray(menus)) return MENUS_TODOS;
+  return menus.filter(m => MENUS_VALIDOS.includes(m)).join(',');
+}
+
+app.get('/api/admin/usuarios', authAdmin, noOperador, requiereMenu('usuarios'), async (req, res) => {
   try {
     const db = getDb();
-    const result = await db.exec('SELECT id, usuario, nombre, estado, permiso, created_at FROM administradores ORDER BY nombre');
+    const result = await db.exec('SELECT id, usuario, nombre, estado, permiso, menus, created_at FROM administradores ORDER BY nombre');
     if (result.length === 0) return res.json([]);
     const columns = result[0].columns;
     const usuarios = result[0].values.map(row => {
@@ -1426,7 +1453,7 @@ app.get('/api/admin/usuarios', authAdmin, noOperador, async (req, res) => {
   }
 });
 
-app.post('/api/admin/usuarios', authAdmin, noOperador, async (req, res) => {
+app.post('/api/admin/usuarios', authAdmin, noOperador, requiereMenu('usuarios'), async (req, res) => {
   try {
     const { usuario, clave, nombre, estado, permiso } = req.body;
     if (!usuario || !clave || !nombre) {
@@ -1436,6 +1463,7 @@ app.post('/api/admin/usuarios', authAdmin, noOperador, async (req, res) => {
     if (permiso && !permisosValidos.includes(permiso)) {
       return res.status(400).json({ error: 'Permiso inválido. Valores permitidos: administrativo, supervisor, operador' });
     }
+    const menus = normalizarMenus(req.body.menus);
     const db = getDb();
     const existing = await db.exec('SELECT id FROM administradores WHERE usuario = ?', [usuario]);
     if (existing.length > 0 && existing[0].values.length > 0) {
@@ -1443,8 +1471,8 @@ app.post('/api/admin/usuarios', authAdmin, noOperador, async (req, res) => {
     }
     const hash = bcrypt.hashSync(clave, 10);
     await db.run(
-      'INSERT INTO administradores (usuario, clave, nombre, estado, permiso) VALUES (?, ?, ?, ?, ?)',
-      [usuario, hash, nombre, estado || 'activo', permiso || 'administrativo']
+      'INSERT INTO administradores (usuario, clave, nombre, estado, permiso, menus) VALUES (?, ?, ?, ?, ?, ?)',
+      [usuario, hash, nombre, estado || 'activo', permiso || 'administrativo', menus]
     );
     res.json({ message: 'Usuario creado exitosamente' });
   } catch (err) {
@@ -1453,13 +1481,17 @@ app.post('/api/admin/usuarios', authAdmin, noOperador, async (req, res) => {
   }
 });
 
-app.put('/api/admin/usuarios/:id', authAdmin, noOperador, async (req, res) => {
+app.put('/api/admin/usuarios/:id', authAdmin, noOperador, requiereMenu('usuarios'), async (req, res) => {
   try {
     const { usuario, clave, nombre, estado, permiso } = req.body;
     const id = parseInt(req.params.id);
     const permisosValidos = ['administrativo', 'supervisor', 'operador'];
     if (permiso && !permisosValidos.includes(permiso)) {
       return res.status(400).json({ error: 'Permiso inválido. Valores permitidos: administrativo, supervisor, operador' });
+    }
+    const menus = normalizarMenus(req.body.menus);
+    if (req.user.id === id && !menus.split(',').includes('usuarios')) {
+      return res.status(400).json({ error: 'No puede quitarse a sí mismo el acceso a Alta Usuario' });
     }
     const db = getDb();
     const existing = await db.exec('SELECT id FROM administradores WHERE usuario = ? AND id != ?', [usuario, id]);
@@ -1469,13 +1501,13 @@ app.put('/api/admin/usuarios/:id', authAdmin, noOperador, async (req, res) => {
     if (clave) {
       const hash = bcrypt.hashSync(clave, 10);
       await db.run(
-        'UPDATE administradores SET usuario=?, clave=?, nombre=?, estado=?, permiso=? WHERE id=?',
-        [usuario, hash, nombre, estado || 'activo', permiso || 'administrativo', id]
+        'UPDATE administradores SET usuario=?, clave=?, nombre=?, estado=?, permiso=?, menus=? WHERE id=?',
+        [usuario, hash, nombre, estado || 'activo', permiso || 'administrativo', menus, id]
       );
     } else {
       await db.run(
-        'UPDATE administradores SET usuario=?, nombre=?, estado=?, permiso=? WHERE id=?',
-        [usuario, nombre, estado || 'activo', permiso || 'administrativo', id]
+        'UPDATE administradores SET usuario=?, nombre=?, estado=?, permiso=?, menus=? WHERE id=?',
+        [usuario, nombre, estado || 'activo', permiso || 'administrativo', menus, id]
       );
     }
     res.json({ message: 'Usuario actualizado exitosamente' });
@@ -1485,7 +1517,7 @@ app.put('/api/admin/usuarios/:id', authAdmin, noOperador, async (req, res) => {
   }
 });
 
-app.delete('/api/admin/usuarios/:id', authAdmin, noOperador, async (req, res) => {
+app.delete('/api/admin/usuarios/:id', authAdmin, noOperador, requiereMenu('usuarios'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const db = getDb();

@@ -1113,6 +1113,21 @@ tr:hover td {
   margin-bottom: 14px;
 }
 
+.menus-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+}
+
+.menus-checks label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
 .clases-grupo-titulo {
   display: block;
   font-size: 12px;

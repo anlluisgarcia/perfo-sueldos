@@ -279,6 +279,7 @@ async function loginAdmin(e) {
     localStorage.setItem('userRole', 'admin');
     localStorage.setItem('userName', data.nombre);
     localStorage.setItem('userPermiso', data.permiso || 'administrativo');
+    localStorage.setItem('userMenus', data.menus || '');
     document.getElementById('admin-nombre').textContent = data.nombre;
     showScreen('admin-screen');
     cargarDashboard();
@@ -296,6 +297,7 @@ function logout() {
   localStorage.removeItem('userRole');
   localStorage.removeItem('userName');
   localStorage.removeItem('userPermiso');
+  localStorage.removeItem('userMenus');
   document.getElementById('emp-dni').value = '';
   document.getElementById('emp-clave').value = '';
   document.getElementById('admin-usuario').value = '';
@@ -306,21 +308,42 @@ function logout() {
 // ==================== ADMIN DASHBOARD ====================
 async function cargarDashboard() {
   cargarEstadisticas();
-  cargarEmpleados();
-  cargarFirmasAdmin();
-  cargarHistorialRecibos();
   verificarCumpleanios();
+  aplicarPermisosUI();
+}
 
-  // Ocultar tabs "Alta Usuario" y "Configuración" para operadores
+// Menus habilitados para el usuario logueado. null = sin restriccion (sesion
+// iniciada antes de que existiera este control, o el usuario tiene todos).
+function menusDelUsuario() {
+  const menusRaw = localStorage.getItem('userMenus');
+  return menusRaw !== null ? menusRaw.split(',').map(m => m.trim()).filter(Boolean) : null;
+}
+
+// Oculta del sidebar las pestañas que el usuario logueado no tiene habilitadas
+// (por Permiso "operador" o por el check de Menus en Alta Usuario) y solo carga
+// los datos de las que si puede ver. Si la pestaña activa por defecto quedo
+// oculta, salta a la primera visible para no dejar la pantalla en blanco.
+function aplicarPermisosUI() {
   const permiso = localStorage.getItem('userPermiso');
-  const tabUsuarios = document.querySelector('.admin-tab[onclick*="usuarios"]');
-  const tabConfiguracion = document.querySelector('.admin-tab[onclick*="configuracion"]');
-  if (permiso === 'operador') {
-    if (tabUsuarios) tabUsuarios.style.display = 'none';
-    if (tabConfiguracion) tabConfiguracion.style.display = 'none';
-  } else {
-    if (tabUsuarios) tabUsuarios.style.display = '';
-    if (tabConfiguracion) tabConfiguracion.style.display = '';
+  const menus = menusDelUsuario();
+  const tieneMenu = clave => menus === null || menus.includes(clave);
+
+  document.querySelectorAll('.admin-tab').forEach(btn => {
+    const m = (btn.getAttribute('onclick') || '').match(/switchAdminTab\('([a-z]+)'\)/);
+    const clave = m ? m[1] : '';
+    const ocultoPorOperador = permiso === 'operador' && (clave === 'usuarios' || clave === 'configuracion');
+    btn.style.display = (ocultoPorOperador || !tieneMenu(clave)) ? 'none' : '';
+  });
+
+  if (tieneMenu('empleados')) cargarEmpleados();
+  if (tieneMenu('firmas')) cargarFirmasAdmin();
+  if (tieneMenu('historial')) cargarHistorialRecibos();
+
+  const activo = document.querySelector('.admin-tab.active');
+  if (activo && activo.style.display === 'none') {
+    const primeroVisible = Array.from(document.querySelectorAll('.admin-tab')).find(b => b.style.display !== 'none');
+    const m = primeroVisible && (primeroVisible.getAttribute('onclick') || '').match(/switchAdminTab\('([a-z]+)'\)/);
+    if (m) switchAdminTab(m[1]);
   }
 }
 
@@ -2136,6 +2159,26 @@ function filtrarUsuarios() {
   renderUsuarios(filtrados);
 }
 
+// Mismas claves que MENUS_VALIDOS en server.js.
+const MENUS_DISPONIBLES = [
+  { clave: 'empleados', etiqueta: 'Empleados' },
+  { clave: 'fichas', etiqueta: 'Datos Empleados' },
+  { clave: 'firmas', etiqueta: 'Firmas' },
+  { clave: 'recibos', etiqueta: 'Subir Recibos' },
+  { clave: 'historial', etiqueta: 'Historial Recibos' },
+  { clave: 'usuarios', etiqueta: 'Alta Usuario' },
+  { clave: 'configuracion', etiqueta: 'Configuración' }
+];
+
+function checkboxesMenusHTML(seleccionados) {
+  return MENUS_DISPONIBLES.map(m => `
+    <label>
+      <input type="checkbox" class="usr-menu-check" value="${m.clave}"${seleccionados.includes(m.clave) ? ' checked' : ''}>
+      ${m.etiqueta}
+    </label>
+  `).join('');
+}
+
 function mostrarFormUsuario() {
   document.getElementById('form-usuario-container').classList.remove('hidden');
   document.getElementById('form-usuario-titulo').textContent = 'Nuevo Usuario';
@@ -2143,6 +2186,7 @@ function mostrarFormUsuario() {
   document.getElementById('usr-edit-id').value = '';
   document.getElementById('usr-clave').setAttribute('required', 'required');
   document.getElementById('usr-clave').placeholder = 'Contraseña';
+  document.getElementById('usr-menus-checks').innerHTML = checkboxesMenusHTML(MENUS_DISPONIBLES.map(m => m.clave));
 }
 
 function cancelarFormUsuario() {
@@ -2164,17 +2208,21 @@ function editarUsuario(id) {
   document.getElementById('usr-clave').placeholder = 'Dejar vacío para mantener actual';
   document.getElementById('usr-estado').value = u.estado || 'activo';
   document.getElementById('usr-permiso').value = u.permiso || 'administrativo';
+  const menusActuales = (u.menus || '').split(',').map(m => m.trim()).filter(Boolean);
+  document.getElementById('usr-menus-checks').innerHTML = checkboxesMenusHTML(menusActuales);
 }
 
 async function guardarUsuario(e) {
   e.preventDefault();
   const id = document.getElementById('usr-edit-id').value;
+  const menus = Array.from(document.querySelectorAll('.usr-menu-check:checked')).map(c => c.value);
   const data = {
     nombre: document.getElementById('usr-nombre').value.trim(),
     usuario: document.getElementById('usr-usuario').value.trim(),
     clave: document.getElementById('usr-clave').value,
     estado: document.getElementById('usr-estado').value,
-    permiso: document.getElementById('usr-permiso').value
+    permiso: document.getElementById('usr-permiso').value,
+    menus
   };
 
   if (!data.nombre || !data.usuario) {
