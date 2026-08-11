@@ -583,6 +583,14 @@
           </div>
           <form id="form-importar-pdf" onsubmit="subirPdfConfiguracion(event)">
             <div class="form-group">
+              <label>Empresa *</label>
+              <select id="config-pdf-empresa" required>
+                <option value="">Seleccionar empresa...</option>
+                <option value="BTZ MINERA">BTZ MINERA</option>
+                <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>Archivo PDF *</label>
               <div class="upload-area" id="upload-area-config">
                 <input type="file" id="config-pdf-archivo" accept=".pdf">

@@ -354,9 +354,13 @@ app.post('/api/admin/configuracion/importar-pdf', authAdmin, noOperador, uploadM
 
 app.post('/api/admin/configuracion/importar-pdf/guardar', authAdmin, noOperador, async (req, res) => {
   try {
-    const { empleados } = req.body;
+    const { empleados, empresa } = req.body;
     if (!Array.isArray(empleados) || empleados.length === 0) {
       return res.status(400).json({ error: 'No se recibieron empleados para guardar' });
+    }
+    const empresaLimpia = (empresa || '').trim();
+    if (!empresaLimpia || !EMPRESAS.includes(empresaLimpia)) {
+      return res.status(400).json({ error: 'Debe seleccionar una empresa valida' });
     }
 
     const db = getDb();
@@ -377,11 +381,11 @@ app.post('/api/admin/configuracion/importar-pdf/guardar', authAdmin, noOperador,
       }
       const clave = dni.slice(-4);
       const hash = bcrypt.hashSync(clave, 10);
-      await db.run('INSERT INTO empleados (nombre, dni, clave) VALUES (?, ?, ?)', [nombre, dni, hash]);
+      await db.run('INSERT INTO empleados (nombre, dni, clave, empresa) VALUES (?, ?, ?, ?)', [nombre, dni, hash, empresaLimpia]);
       creados++;
     }
 
-    res.json({ message: `${creados} empleado(s) creado(s) exitosamente`, creados, omitidos });
+    res.json({ message: `${creados} empleado(s) creado(s) exitosamente en ${empresaLimpia}`, creados, omitidos });
   } catch (err) {
     console.error('Guardar empleados importados error:', err);
     res.status(500).json({ error: 'Error al guardar los empleados' });

@@ -1331,6 +1331,11 @@ let importacionPdfNuevos = [];
 
 async function subirPdfConfiguracion(e) {
   e.preventDefault();
+  const empresa = document.getElementById('config-pdf-empresa').value;
+  if (!empresa) {
+    showToast('Seleccione la empresa antes de analizar el PDF', 'error');
+    return;
+  }
   const input = document.getElementById('config-pdf-archivo');
   if (!input.files || input.files.length === 0) {
     showToast('Seleccione un archivo PDF', 'error');
@@ -1412,6 +1417,11 @@ function toggleTodosImportados() {
 }
 
 async function guardarNuevosEmpleadosImportados() {
+  const empresa = document.getElementById('config-pdf-empresa').value;
+  if (!empresa) {
+    showToast('Seleccione la empresa antes de guardar', 'error');
+    return;
+  }
   const seleccionados = [];
   document.querySelectorAll('.config-check-nuevo').forEach(chk => {
     if (chk.checked) seleccionados.push(importacionPdfNuevos[parseInt(chk.dataset.idx)]);
@@ -1424,7 +1434,7 @@ async function guardarNuevosEmpleadosImportados() {
     const res = await fetch(`${API}/api/admin/configuracion/importar-pdf/guardar`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ empleados: seleccionados })
+      body: JSON.stringify({ empleados: seleccionados, empresa })
     });
     const data = await leerJson(res);
     if (!res.ok) throw new Error(data.error);
