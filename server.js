@@ -1667,6 +1667,34 @@ app.get('/api/admin/cumpleanios', authAdmin, async (req, res) => {
   }
 });
 
+// Empleados activos con sus fechas de cumpleaños, estudios medicos y
+// antecedentes penales, para el aviso emergente de vencimientos proximos y
+// para Registro > Listado de Eventos. El calculo de dias restantes/vencidos
+// (estudios y antecedentes son anuales) se hace del lado del cliente.
+app.get('/api/admin/eventos', authAdmin, requiereMenu('empleados', 'fichas'), async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.exec(`
+      SELECT e.id, e.nombre, e.empresa, d.fecha_nacimiento, e.fecha_estudios_medicos, e.fecha_antecedentes_penales
+      FROM empleados e
+      LEFT JOIN empleados_datos d ON d.empleado_id = e.id
+      WHERE e.estado = 'activo'
+      ORDER BY e.nombre
+    `);
+    if (result.length === 0) return res.json([]);
+    const columns = result[0].columns;
+    const eventos = result[0].values.map(row => {
+      const obj = {};
+      columns.forEach((col, i) => obj[col] = row[i]);
+      return obj;
+    });
+    res.json(eventos);
+  } catch (err) {
+    console.error('Eventos error:', err);
+    res.status(500).json({ error: 'Error al obtener los eventos' });
+  }
+});
+
 // ==================== INICIAR SERVIDOR ====================
 async function start() {
   await initDatabase();

@@ -812,6 +812,76 @@ tr:hover td {
   margin-bottom: 4px;
 }
 
+/* ========== BANNER EVENTOS (aviso emergente inferior) ========== */
+.banner-eventos {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  max-height: 42vh;
+  overflow-y: auto;
+  padding: 16px 20px;
+  transform: translateY(140%);
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+
+.banner-eventos.show {
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.banner-eventos-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: #92400e;
+}
+
+.banner-eventos-cerrar {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  color: #92400e;
+  padding: 0 4px;
+}
+
+.tabla-banner-eventos {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-banner-eventos th,
+.tabla-banner-eventos td {
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #78350f;
+  border-bottom: 1px solid #fde68a;
+}
+
+.tabla-banner-eventos th {
+  font-weight: 700;
+}
+
+.dato-vencido {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  .banner-eventos { left: 8px; right: 8px; bottom: 8px; padding: 12px; max-height: 55vh; }
+}
+
 /* ========== EMPLEADO TABS ========== */
 .emp-tabs {
   display: flex;

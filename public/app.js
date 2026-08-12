@@ -309,6 +309,7 @@ function logout() {
 async function cargarDashboard() {
   cargarEstadisticas();
   verificarCumpleanios();
+  verificarEventosProximos();
   aplicarPermisosUI();
 }
 
@@ -330,10 +331,18 @@ function aplicarPermisosUI() {
 
   document.querySelectorAll('.admin-tab').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/switchAdminTab\('([a-z]+)'\)/);
-    // "salutacion" es una vista dentro del menu Configuracion: comparte su permiso.
-    const clave = m ? (m[1] === 'salutacion' ? 'configuracion' : m[1]) : '';
-    const ocultoPorOperador = permiso === 'operador' && (clave === 'usuarios' || clave === 'configuracion');
-    btn.style.display = (ocultoPorOperador || !tieneMenu(clave)) ? 'none' : '';
+    const tabKey = m ? m[1] : '';
+    let visible;
+    if (tabKey === 'eventos') {
+      // Listado de Eventos combina datos de Empleados y de Fichas: alcanza con cualquiera de los dos.
+      visible = tieneMenu('empleados') || tieneMenu('fichas');
+    } else {
+      // "salutacion" es una vista dentro del menu Configuracion: comparte su permiso.
+      const clave = tabKey === 'salutacion' ? 'configuracion' : tabKey;
+      const ocultoPorOperador = permiso === 'operador' && (clave === 'usuarios' || clave === 'configuracion');
+      visible = !ocultoPorOperador && tieneMenu(clave);
+    }
+    btn.style.display = visible ? '' : 'none';
   });
 
   document.querySelectorAll('.admin-tab-group').forEach(grupo => {
@@ -426,6 +435,167 @@ function cerrarModalCumpleanios() {
   document.getElementById('modal-cumpleanios').classList.add('hidden');
 }
 
+// ==================== EVENTOS (cumpleaños, estudios medicos, antecedentes) ====================
+const MS_DIA = 24 * 60 * 60 * 1000;
+const DIAS_AVISO_ESTUDIOS = 25;
+const DIAS_AVISO_ANTECEDENTES = 10;
+
+function hoyLocalSinHora() {
+  const h = new Date();
+  return new Date(h.getFullYear(), h.getMonth(), h.getDate());
+}
+
+function formatFechaCompleta(fecha) {
+  const partes = String(fecha || '').substring(0, 10).split('-');
+  return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : '-';
+}
+
+// Estudios Medicos y Antecedentes Penales son anuales: vencen un año despues
+// de la fecha cargada. Negativo = dias vencido, 0 o positivo = dias que faltan.
+function diasParaVencerAnual(fecha) {
+  const partes = String(fecha || '').substring(0, 10).split('-');
+  if (partes.length !== 3) return null;
+  const anio = parseInt(partes[0], 10), mes = parseInt(partes[1], 10) - 1, dia = parseInt(partes[2], 10);
+  if (!Number.isFinite(anio) || !Number.isFinite(mes) || !Number.isFinite(dia)) return null;
+  const vencimiento = new Date(anio + 1, mes, dia);
+  return Math.round((vencimiento - hoyLocalSinHora()) / MS_DIA);
+}
+
+// Cumpleaños: siempre la proxima ocurrencia futura (o hoy), igual que
+// diasParaProximoCumple() en server.js.
+function diasProximoCumpleanos(fecha) {
+  const partes = String(fecha || '').substring(0, 10).split('-');
+  if (partes.length !== 3) return null;
+  const mes = parseInt(partes[1], 10) - 1, dia = parseInt(partes[2], 10);
+  if (!Number.isFinite(mes) || !Number.isFinite(dia)) return null;
+  const hoy = hoyLocalSinHora();
+  let proximo = new Date(hoy.getFullYear(), mes, dia);
+  if (proximo < hoy) proximo = new Date(hoy.getFullYear() + 1, mes, dia);
+  return Math.round((proximo - hoy) / MS_DIA);
+}
+
+function textoVencimiento(fecha, dias) {
+  if (!fecha) return '-';
+  const fechaTexto = formatFechaCompleta(fecha);
+  if (dias === null) return fechaTexto;
+  if (dias < 0) return `${fechaTexto} (vencido hace ${Math.abs(dias)} día${Math.abs(dias) === 1 ? '' : 's'})`;
+  if (dias === 0) return `${fechaTexto} (vence hoy)`;
+  return `${fechaTexto} (vence en ${dias} día${dias === 1 ? '' : 's'})`;
+}
+
+// Aviso emergente al iniciar sesion: empleados con Estudios Medicos a vencer
+// en 25 dias o menos (incluye vencidos), o Antecedentes Penales en 10 dias o
+// menos (incluye vencidos).
+async function verificarEventosProximos() {
+  try {
+    const res = await fetch(`${API}/api/admin/eventos`, { headers: headersAuth() });
+    if (!res.ok) return;
+    const eventos = await res.json();
+
+    const proximos = eventos.filter(e => {
+      const diasEstudios = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
+      const diasAntecedentes = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+      return (diasEstudios !== null && diasEstudios <= DIAS_AVISO_ESTUDIOS) ||
+             (diasAntecedentes !== null && diasAntecedentes <= DIAS_AVISO_ANTECEDENTES);
+    });
+
+    if (proximos.length === 0) return;
+
+    document.getElementById('banner-eventos-cuerpo').innerHTML = proximos.map(e => {
+      const diasEstudios = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
+      const diasAntecedentes = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+      return `
+        <tr>
+          <td>${e.nombre}</td>
+          <td>${textoVencimiento(e.fecha_estudios_medicos, diasEstudios)}</td>
+          <td>${textoVencimiento(e.fecha_antecedentes_penales, diasAntecedentes)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    document.getElementById('banner-eventos').classList.add('show');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function cerrarBannerEventos() {
+  document.getElementById('banner-eventos').classList.remove('show');
+}
+
+// ---------- Registro > Listado de Eventos ----------
+let eventosCache = [];
+
+async function cargarEventos() {
+  try {
+    const res = await fetch(`${API}/api/admin/eventos`, { headers: headersAuth() });
+    eventosCache = await res.json();
+    filtrarEventos();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function filtrarEventos() {
+  const empresa = document.getElementById('eventos-filtro-empresa').value;
+  const tipo = document.getElementById('eventos-filtro-tipo').value;
+  const orden = document.getElementById('eventos-orden').value;
+
+  let filtrados = eventosCache.filter(e => !empresa || e.empresa === empresa);
+
+  if (tipo === 'vencidos') {
+    filtrados = filtrados.filter(e => {
+      const de = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
+      const da = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+      return (de !== null && de < 0) || (da !== null && da < 0);
+    });
+  } else if (tipo === 'cumpleanios') {
+    filtrados = filtrados.filter(e => !!e.fecha_nacimiento);
+  }
+
+  filtrados = filtrados.slice();
+  if (orden === 'estudios') {
+    filtrados.sort((a, b) => {
+      const da = a.fecha_estudios_medicos ? diasParaVencerAnual(a.fecha_estudios_medicos) : Infinity;
+      const db = b.fecha_estudios_medicos ? diasParaVencerAnual(b.fecha_estudios_medicos) : Infinity;
+      return da - db;
+    });
+  } else if (orden === 'empresa') {
+    filtrados.sort((a, b) => (a.empresa || '').localeCompare(b.empresa || '') || a.nombre.localeCompare(b.nombre));
+  } else {
+    filtrados.sort((a, b) => {
+      const da = a.fecha_nacimiento ? diasProximoCumpleanos(a.fecha_nacimiento) : Infinity;
+      const db = b.fecha_nacimiento ? diasProximoCumpleanos(b.fecha_nacimiento) : Infinity;
+      return da - db;
+    });
+  }
+
+  renderEventos(filtrados);
+}
+
+function renderEventos(lista) {
+  const tbody = document.getElementById('tabla-eventos');
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-500);padding:40px">No hay eventos que coincidan con el filtro</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(e => {
+    const diasEstudios = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
+    const diasAntecedentes = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+    const claseEstudios = diasEstudios !== null && diasEstudios < 0 ? 'dato-vencido' : '';
+    const claseAntecedentes = diasAntecedentes !== null && diasAntecedentes < 0 ? 'dato-vencido' : '';
+    return `
+      <tr>
+        <td><strong>${e.nombre}</strong></td>
+        <td>${e.empresa || '-'}</td>
+        <td>${e.fecha_nacimiento ? formatFechaCorta(e.fecha_nacimiento) : '-'}</td>
+        <td class="${claseEstudios}">${textoVencimiento(e.fecha_estudios_medicos, diasEstudios)}</td>
+        <td class="${claseAntecedentes}">${textoVencimiento(e.fecha_antecedentes_penales, diasAntecedentes)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
 // ==================== ADMIN TABS ====================
 function toggleAdminGroup(nombre) {
   const grupo = document.querySelector(`.admin-tab-group[data-group="${nombre}"]`);
@@ -447,6 +617,7 @@ function switchAdminTab(tab) {
   if (tab === 'historial') cargarHistorialRecibos();
   if (tab === 'usuarios') cargarUsuarios();
   if (tab === 'salutacion') cargarSalutacionPreview();
+  if (tab === 'eventos') cargarEventos();
 }
 
 // ==================== EMPLEADOS CRUD ====================
