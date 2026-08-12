@@ -676,10 +676,66 @@ function cancelarFormEmpleado() {
   document.getElementById('form-empleado-container').classList.add('hidden');
 }
 
-// Editar Empleado ya no se muestra inline: abre una ventana aparte
-// (empleado-editar.html) con los datos del empleado para editarlos ahi.
+// Editar Empleado se muestra en un modal (no inline, no en pestaña aparte):
+// se cierra con Cancelar, la X del teclado no aplica pero un clic afuera del
+// cuadro tambien lo cierra (ver el onclick del overlay en index.html).
 function editarEmpleado(id) {
-  window.open(`empleado-editar.html?id=${id}`, '_blank', 'width=700,height=760');
+  const emp = empleadosCache.find(e => e.id === id);
+  if (!emp) return;
+  document.getElementById('medit-titulo').textContent = `Editar Empleado: ${emp.nombre}`;
+  document.getElementById('medit-id').value = emp.id;
+  document.getElementById('medit-nombre').value = emp.nombre;
+  document.getElementById('medit-dni').value = emp.dni;
+  document.getElementById('medit-clave').value = '';
+  document.getElementById('medit-telefono').value = emp.telefono || '';
+  document.getElementById('medit-direccion').value = emp.direccion || '';
+  document.getElementById('medit-empresa').value = emp.empresa || '';
+  document.getElementById('medit-estado').value = emp.estado || 'activo';
+  document.getElementById('medit-fecha-estudios-medicos').value = (emp.fecha_estudios_medicos || '').substring(0, 10);
+  document.getElementById('medit-fecha-antecedentes-penales').value = (emp.fecha_antecedentes_penales || '').substring(0, 10);
+  document.getElementById('modal-editar-empleado').classList.remove('hidden');
+}
+
+function cerrarModalEditarEmpleado() {
+  document.getElementById('modal-editar-empleado').classList.add('hidden');
+}
+
+async function guardarEmpleadoEditado(e) {
+  e.preventDefault();
+  const id = document.getElementById('medit-id').value;
+  const data = {
+    nombre: document.getElementById('medit-nombre').value.trim(),
+    dni: document.getElementById('medit-dni').value.trim(),
+    telefono: document.getElementById('medit-telefono').value.trim(),
+    direccion: document.getElementById('medit-direccion').value.trim(),
+    empresa: document.getElementById('medit-empresa').value,
+    estado: document.getElementById('medit-estado').value,
+    fecha_estudios_medicos: document.getElementById('medit-fecha-estudios-medicos').value || null,
+    fecha_antecedentes_penales: document.getElementById('medit-fecha-antecedentes-penales').value || null
+  };
+  const claveVal = document.getElementById('medit-clave').value;
+  if (claveVal) data.clave = claveVal;
+
+  if (!data.nombre || !data.dni) {
+    showToast('Nombre y DNI son obligatorios', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/api/admin/empleados/${id}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error);
+    showToast(result.message);
+    cerrarModalEditarEmpleado();
+    cargarEmpleados();
+    cargarEstadisticas();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 async function guardarEmpleado(e) {

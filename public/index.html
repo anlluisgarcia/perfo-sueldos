@@ -1206,6 +1206,74 @@
     </div>
   </div>
 
+  <!-- MODAL EDITAR EMPLEADO -->
+  <div id="modal-editar-empleado" class="modal hidden" onclick="if (event.target === this) cerrarModalEditarEmpleado()">
+    <div class="modal-content modal-editar-empleado-content">
+      <h3 id="medit-titulo">Editar Empleado</h3>
+      <form id="form-editar-empleado" onsubmit="guardarEmpleadoEditado(event)">
+        <input type="hidden" id="medit-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre Completo *</label>
+            <input type="text" id="medit-nombre">
+          </div>
+          <div class="form-group">
+            <label>DNI *</label>
+            <input type="text" id="medit-dni" maxlength="8">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Clave (d&iacute;gitos)</label>
+            <input type="text" id="medit-clave" placeholder="Dejar vac&iacute;o para mantener actual">
+          </div>
+          <div class="form-group">
+            <label>Tel&eacute;fono</label>
+            <input type="text" id="medit-telefono">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Direcci&oacute;n</label>
+            <input type="text" id="medit-direccion">
+          </div>
+          <div class="form-group">
+            <label>Empresa</label>
+            <select id="medit-empresa">
+              <option value="">Seleccionar empresa...</option>
+              <option value="BTZ MINERA">BTZ MINERA</option>
+              <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="medit-estado">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </div>
+          <div class="form-group"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha de Estudios M&eacute;dicos</label>
+            <input type="date" id="medit-fecha-estudios-medicos">
+          </div>
+          <div class="form-group">
+            <label>Fecha de Antecedentes Penales (Cert. de Reincidencia)</label>
+            <input type="date" id="medit-fecha-antecedentes-penales">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-outline" onclick="cerrarModalEditarEmpleado()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL DATOS DEL EMPLEADO (consulta admin) -->
   <div id="modal-datos-empleado" class="modal hidden">
     <div class="modal-content modal-datos-content">
