@@ -1098,8 +1098,8 @@ function enviarWhatsappEmpleado(id) {
   window.open(`https://wa.me/${numero}`, '_blank');
 }
 
-// Descarga un dataURL (imagen en base64) como archivo, para que el admin lo
-// adjunte a mano en el chat de WhatsApp que se abre junto con esta funcion.
+// Descarga un dataURL (imagen en base64) como archivo. Se usa solo como
+// respaldo cuando el navegador no soporta copiar imagenes al portapapeles.
 function descargarDataUrl(dataUrl, nombreBase) {
   const match = /^data:image\/(png|jpeg);/.exec(dataUrl);
   const ext = match && match[1] === 'jpeg' ? 'jpg' : 'png';
@@ -1111,9 +1111,36 @@ function descargarDataUrl(dataUrl, nombreBase) {
   document.body.removeChild(a);
 }
 
-// wa.me no permite adjuntar imagenes automaticamente: se descarga la tarjeta
-// de saludo (segun el sexo del empleado) y a la vez se abre el chat, para que
-// quien administra el sistema la arrastre al chat manualmente.
+// La Clipboard API para imagenes solo acepta PNG de forma confiable en la
+// mayoria de los navegadores: se redibuja el dataURL (sea PNG o JPEG) en un
+// canvas para asegurarse de copiar siempre un blob PNG.
+function dataUrlAPngBlob(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('No se pudo convertir la imagen')), 'image/png');
+    };
+    img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+    img.src = dataUrl;
+  });
+}
+
+async function copiarImagenAlPortapapeles(dataUrl) {
+  if (!navigator.clipboard || !window.ClipboardItem) {
+    throw new Error('El navegador no soporta copiar imagenes al portapapeles');
+  }
+  const blob = await dataUrlAPngBlob(dataUrl);
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+}
+
+// wa.me no permite adjuntar ni enviar imagenes automaticamente (ninguna pagina
+// puede "pegar" un archivo dentro del chat de otro sitio). Se copia la tarjeta
+// de saludo (segun el sexo del empleado) al portapapeles y se abre el chat de
+// WhatsApp Web con el texto listo: solo falta Ctrl+V y enviar.
 async function enviarSaludoCumpleanios(id) {
   const e = cumpleHoyCache.find(x => x.id === id);
   if (!e) return;
@@ -1139,9 +1166,24 @@ async function enviarSaludoCumpleanios(id) {
       showToast(`Falta cargar la imagen de saludo para ${sexo} en Configuración > Salutación`, 'error');
       return;
     }
-    descargarDataUrl(imagen.imagen_data, `saludo-cumpleanios-${e.nombre.replace(/[^a-zA-Z0-9]+/g, '_')}`);
+
+    let copiada = false;
+    try {
+      await copiarImagenAlPortapapeles(imagen.imagen_data);
+      copiada = true;
+    } catch (errClip) {
+      console.error(errClip);
+    }
+
     const texto = `¡Feliz cumpleaños, ${e.nombre}! \u{1F389}\u{1F382}`;
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank');
+
+    if (copiada) {
+      showToast('Imagen copiada: pegala (Ctrl+V) en el chat de WhatsApp y enviá', 'success');
+    } else {
+      descargarDataUrl(imagen.imagen_data, `saludo-cumpleanios-${e.nombre.replace(/[^a-zA-Z0-9]+/g, '_')}`);
+      showToast('No se pudo copiar la imagen: se descargó para adjuntarla manualmente', 'error');
+    }
   } catch (err) {
     console.error(err);
     showToast('Error al obtener la imagen de saludo', 'error');
