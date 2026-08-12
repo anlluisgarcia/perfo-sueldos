@@ -1138,9 +1138,11 @@ async function copiarImagenAlPortapapeles(dataUrl) {
 }
 
 // wa.me no permite adjuntar ni enviar imagenes automaticamente (ninguna pagina
-// puede "pegar" un archivo dentro del chat de otro sitio). Se copia la tarjeta
-// de saludo (segun el sexo del empleado) al portapapeles y se abre el chat de
-// WhatsApp Web con el texto listo: solo falta Ctrl+V y enviar.
+// puede "pegar" un archivo dentro del chat de otro sitio). Si esta instalada
+// la extension de Chrome "Saludo Cumpleaños - Perfo Sueldos" (whatsapp-extension/),
+// se le delega el pegado automatico de la imagen en WhatsApp Web. Si no esta
+// instalada, se copia la tarjeta al portapapeles y hay que pegarla a mano
+// (Ctrl+V) en el chat que se abre.
 async function enviarSaludoCumpleanios(id) {
   const e = cumpleHoyCache.find(x => x.id === id);
   if (!e) return;
@@ -1167,6 +1169,17 @@ async function enviarSaludoCumpleanios(id) {
       return;
     }
 
+    const texto = `¡Feliz cumpleaños, ${e.nombre}! \u{1F389}\u{1F382}`;
+
+    if (document.documentElement.hasAttribute('data-saludo-whatsapp-ext')) {
+      window.dispatchEvent(new CustomEvent('perfoSaludoWhatsapp', {
+        detail: { numero, texto, imagenDataUrl: imagen.imagen_data, nombre: e.nombre }
+      }));
+      window.open(`https://web.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(texto)}`, '_blank');
+      showToast('Abriendo WhatsApp Web: la imagen se pega sola, solo falta apretar Enviar', 'success');
+      return;
+    }
+
     let copiada = false;
     try {
       await copiarImagenAlPortapapeles(imagen.imagen_data);
@@ -1175,7 +1188,6 @@ async function enviarSaludoCumpleanios(id) {
       console.error(errClip);
     }
 
-    const texto = `¡Feliz cumpleaños, ${e.nombre}! \u{1F389}\u{1F382}`;
     window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank');
 
     if (copiada) {

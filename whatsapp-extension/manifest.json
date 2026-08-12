@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Saludo Cumpleaños - Perfo Sueldos",
+  "version": "1.0.0",
+  "description": "Al enviar un saludo de cumpleaños desde el panel de Perfo Sueldos, pega automaticamente la tarjeta de saludo en el chat de WhatsApp Web del empleado.",
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sueldos.btzminera.com.ar/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["content-panel.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content-whatsapp.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
