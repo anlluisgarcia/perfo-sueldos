@@ -505,19 +505,10 @@ function cancelarFormEmpleado() {
   document.getElementById('form-empleado-container').classList.add('hidden');
 }
 
+// Editar Empleado ya no se muestra inline: abre una ventana aparte
+// (empleado-editar.html) con los datos del empleado para editarlos ahi.
 function editarEmpleado(id) {
-  const emp = empleadosCache.find(e => e.id === id);
-  if (!emp) return;
-  document.getElementById('form-empleado-container').classList.remove('hidden');
-  document.getElementById('form-empleado-titulo').textContent = 'Editar Empleado';
-  document.getElementById('emp-edit-id').value = emp.id;
-  document.getElementById('emp-nombre').value = emp.nombre;
-  document.getElementById('emp-dni-form').value = emp.dni;
-  document.getElementById('emp-clave-form').value = '';
-  document.getElementById('emp-telefono').value = emp.telefono || '';
-  document.getElementById('emp-direccion').value = emp.direccion || '';
-  document.getElementById('emp-empresa').value = emp.empresa || '';
-  document.getElementById('emp-estado').value = emp.estado;
+  window.open(`empleado-editar.html?id=${id}`, '_blank', 'width=700,height=760');
 }
 
 async function guardarEmpleado(e) {

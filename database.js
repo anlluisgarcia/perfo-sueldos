@@ -93,6 +93,17 @@ async function ensureSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  // Migracion: fecha de estudios medicos y de antecedentes penales (Cert. de
+  // Reincidencia), cargadas desde Gestion de Empleados.
+  if (!(await columnaExiste('empleados', 'fecha_estudios_medicos'))) {
+    await pool.query('ALTER TABLE empleados ADD COLUMN fecha_estudios_medicos DATE NULL');
+    console.log('Columna empleados.fecha_estudios_medicos agregada');
+  }
+  if (!(await columnaExiste('empleados', 'fecha_antecedentes_penales'))) {
+    await pool.query('ALTER TABLE empleados ADD COLUMN fecha_antecedentes_penales DATE NULL');
+    console.log('Columna empleados.fecha_antecedentes_penales agregada');
+  }
+
   // recibos
   // empresa es una foto del momento de la carga: si despues se cambia la empresa
   // del empleado, los recibos ya subidos conservan la que tenian.

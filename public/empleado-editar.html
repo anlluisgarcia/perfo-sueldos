@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editar Empleado</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="admin-content" style="max-width:640px">
+    <div class="card">
+      <h2 id="titulo">Editar Empleado</h2>
+      <p id="cargando" style="color:var(--gray-500)">Cargando datos del empleado...</p>
+      <form id="form-empleado-editar" class="hidden" onsubmit="guardar(event)">
+        <input type="hidden" id="emp-edit-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre Completo *</label>
+            <input type="text" id="emp-nombre">
+          </div>
+          <div class="form-group">
+            <label>DNI *</label>
+            <input type="text" id="emp-dni-form" maxlength="8">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Clave (d&iacute;gitos)</label>
+            <input type="text" id="emp-clave-form" placeholder="Dejar vac&iacute;o para mantener actual">
+          </div>
+          <div class="form-group">
+            <label>Tel&eacute;fono</label>
+            <input type="text" id="emp-telefono">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Direcci&oacute;n</label>
+            <input type="text" id="emp-direccion">
+          </div>
+          <div class="form-group">
+            <label>Empresa</label>
+            <select id="emp-empresa">
+              <option value="">Seleccionar empresa...</option>
+              <option value="BTZ MINERA">BTZ MINERA</option>
+              <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estado</label>
+            <select id="emp-estado">
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
+          </div>
+          <div class="form-group"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha de Estudios M&eacute;dicos</label>
+            <input type="date" id="emp-fecha-estudios-medicos">
+          </div>
+          <div class="form-group">
+            <label>Fecha de Antecedentes Penales (Cert. de Reincidencia)</label>
+            <input type="date" id="emp-fecha-antecedentes-penales">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Guardar</button>
+          <button type="button" class="btn btn-outline" onclick="window.close()">Cerrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const API = '';
+    const token = localStorage.getItem('token') || '';
+
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function headers() {
+      return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    }
+
+    function idDeUrl() {
+      return new URLSearchParams(location.search).get('id');
+    }
+
+    async function cargar() {
+      const id = idDeUrl();
+      if (!token || !id) {
+        document.getElementById('cargando').textContent = 'No se pudo abrir el empleado: falta la sesión o el id. Cerrá esta ventana e intentá de nuevo desde el panel.';
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/api/admin/empleados`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const lista = await res.json();
+        if (!res.ok) throw new Error(lista.error || 'Error al obtener el empleado');
+        const emp = lista.find(e => String(e.id) === String(id));
+        if (!emp) throw new Error('Empleado no encontrado');
+
+        document.getElementById('titulo').textContent = `Editar Empleado: ${emp.nombre}`;
+        document.getElementById('emp-edit-id').value = emp.id;
+        document.getElementById('emp-nombre').value = emp.nombre;
+        document.getElementById('emp-dni-form').value = emp.dni;
+        document.getElementById('emp-telefono').value = emp.telefono || '';
+        document.getElementById('emp-direccion').value = emp.direccion || '';
+        document.getElementById('emp-empresa').value = emp.empresa || '';
+        document.getElementById('emp-estado').value = emp.estado || 'activo';
+        document.getElementById('emp-fecha-estudios-medicos').value = (emp.fecha_estudios_medicos || '').substring(0, 10);
+        document.getElementById('emp-fecha-antecedentes-penales').value = (emp.fecha_antecedentes_penales || '').substring(0, 10);
+
+        document.getElementById('cargando').classList.add('hidden');
+        document.getElementById('form-empleado-editar').classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('cargando').textContent = err.message;
+      }
+    }
+
+    async function guardar(e) {
+      e.preventDefault();
+      const id = document.getElementById('emp-edit-id').value;
+      const data = {
+        nombre: document.getElementById('emp-nombre').value.trim(),
+        dni: document.getElementById('emp-dni-form').value.trim(),
+        telefono: document.getElementById('emp-telefono').value.trim(),
+        direccion: document.getElementById('emp-direccion').value.trim(),
+        empresa: document.getElementById('emp-empresa').value,
+        estado: document.getElementById('emp-estado').value,
+        fecha_estudios_medicos: document.getElementById('emp-fecha-estudios-medicos').value || null,
+        fecha_antecedentes_penales: document.getElementById('emp-fecha-antecedentes-penales').value || null
+      };
+      const claveVal = document.getElementById('emp-clave-form').value;
+      if (claveVal) data.clave = claveVal;
+
+      if (!data.nombre || !data.dni) {
+        showToast('Nombre y DNI son obligatorios', 'error');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/api/admin/empleados/${id}`, {
+          method: 'PUT',
+          headers: headers(),
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error);
+        showToast('Empleado actualizado exitosamente');
+        if (window.opener && !window.opener.closed && typeof window.opener.cargarEmpleados === 'function') {
+          window.opener.cargarEmpleados();
+        }
+        setTimeout(() => window.close(), 800);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    cargar();
+  </script>
+</body>
+</html>

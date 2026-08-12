@@ -178,7 +178,7 @@ app.post('/api/empleado/login', async (req, res) => {
 app.get('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
     const db = getDb();
-    const result = await db.exec('SELECT id, nombre, dni, telefono, direccion, empresa, estado, created_at FROM empleados ORDER BY nombre');
+    const result = await db.exec('SELECT id, nombre, dni, telefono, direccion, empresa, estado, fecha_estudios_medicos, fecha_antecedentes_penales, created_at FROM empleados ORDER BY nombre');
     if (result.length === 0) return res.json([]);
     const columns = result[0].columns;
     const empleados = result[0].values.map(row => {
@@ -195,7 +195,7 @@ app.get('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (req
 
 app.post('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
-    const { nombre, dni, clave, telefono, direccion, empresa } = req.body;
+    const { nombre, dni, clave, telefono, direccion, empresa, fecha_estudios_medicos, fecha_antecedentes_penales } = req.body;
     if (!nombre || !dni || !clave) {
       return res.status(400).json({ error: 'Nombre, DNI y clave son obligatorios' });
     }
@@ -206,8 +206,8 @@ app.post('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (re
     }
     const hash = bcrypt.hashSync(clave, 10);
     await db.run(
-      'INSERT INTO empleados (nombre, dni, clave, telefono, direccion, empresa) VALUES (?, ?, ?, ?, ?, ?)',
-      [nombre, dni, hash, telefono || '', direccion || '', empresa || '']
+      'INSERT INTO empleados (nombre, dni, clave, telefono, direccion, empresa, fecha_estudios_medicos, fecha_antecedentes_penales) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [nombre, dni, hash, telefono || '', direccion || '', empresa || '', fecha_estudios_medicos || null, fecha_antecedentes_penales || null]
     );
     res.json({ message: 'Empleado creado exitosamente' });
   } catch (err) {
@@ -218,19 +218,19 @@ app.post('/api/admin/empleados', authAdmin, requiereMenu('empleados'), async (re
 
 app.put('/api/admin/empleados/:id', authAdmin, requiereMenu('empleados'), async (req, res) => {
   try {
-    const { nombre, dni, clave, telefono, direccion, empresa, estado } = req.body;
+    const { nombre, dni, clave, telefono, direccion, empresa, estado, fecha_estudios_medicos, fecha_antecedentes_penales } = req.body;
     const id = parseInt(req.params.id);
     const db = getDb();
     if (clave) {
       const hash = bcrypt.hashSync(clave, 10);
       await db.run(
-        'UPDATE empleados SET nombre=?, dni=?, clave=?, telefono=?, direccion=?, empresa=?, estado=? WHERE id=?',
-        [nombre, dni, hash, telefono || '', direccion || '', empresa || '', estado || 'activo', id]
+        'UPDATE empleados SET nombre=?, dni=?, clave=?, telefono=?, direccion=?, empresa=?, estado=?, fecha_estudios_medicos=?, fecha_antecedentes_penales=? WHERE id=?',
+        [nombre, dni, hash, telefono || '', direccion || '', empresa || '', estado || 'activo', fecha_estudios_medicos || null, fecha_antecedentes_penales || null, id]
       );
     } else {
       await db.run(
-        'UPDATE empleados SET nombre=?, dni=?, telefono=?, direccion=?, empresa=?, estado=? WHERE id=?',
-        [nombre, dni, telefono || '', direccion || '', empresa || '', estado || 'activo', id]
+        'UPDATE empleados SET nombre=?, dni=?, telefono=?, direccion=?, empresa=?, estado=?, fecha_estudios_medicos=?, fecha_antecedentes_penales=? WHERE id=?',
+        [nombre, dni, telefono || '', direccion || '', empresa || '', estado || 'activo', fecha_estudios_medicos || null, fecha_antecedentes_penales || null, id]
       );
     }
     res.json({ message: 'Empleado actualizado exitosamente' });
