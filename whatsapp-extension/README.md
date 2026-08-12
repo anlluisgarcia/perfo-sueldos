@@ -1,9 +1,10 @@
 # Extensión "Saludo Cumpleaños - Perfo Sueldos"
 
 Extensión de Chrome que hace que, al apretar el ícono de WhatsApp del cumpleañero
-del día en el panel, la tarjeta de saludo (según su sexo, cargada en
-Configuración > Salutación) se pegue sola en el cuadro de mensaje del chat de
-WhatsApp Web del empleado. Solo queda apretar la flecha de Enviar.
+del día en el panel, se reuse la pestaña de WhatsApp Web que ya tengas abierta
+(si no hay ninguna, abre una) en el chat del empleado, con la tarjeta de
+saludo (según su sexo, cargada en Configuración > Salutación) ya pegada en el
+cuadro de mensaje. Solo queda apretar la flecha de Enviar.
 
 ## Aviso importante
 
@@ -25,6 +26,11 @@ Ctrl+V a mano).
 5. Confirmar que aparece la extensión "Saludo Cumpleaños - Perfo Sueldos" en la lista, activada.
 
 Hay que instalarla en cada computadora donde se vaya a usar esta función.
+
+Si ya la habías instalado antes y se actualizaron estos archivos, entrá a
+`chrome://extensions` y apretá el ícono de recargar (⟳) en la tarjeta de la
+extensión para que tome los cambios — no hace falta desinstalarla y volver a
+cargarla.
 
 ## Probarla
 

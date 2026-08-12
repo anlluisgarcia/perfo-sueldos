@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Saludo Cumpleaños - Perfo Sueldos",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Al enviar un saludo de cumpleaños desde el panel de Perfo Sueldos, pega automaticamente la tarjeta de saludo en el chat de WhatsApp Web del empleado.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [

@@ -1172,10 +1172,11 @@ async function enviarSaludoCumpleanios(id) {
     const texto = `¡Feliz cumpleaños, ${e.nombre}! \u{1F389}\u{1F382}`;
 
     if (document.documentElement.hasAttribute('data-saludo-whatsapp-ext')) {
+      // La extension (background.js) se encarga de abrir/reusar la pestaña de
+      // WhatsApp Web: aca no se llama a window.open para no duplicar la pestaña.
       window.dispatchEvent(new CustomEvent('perfoSaludoWhatsapp', {
         detail: { numero, texto, imagenDataUrl: imagen.imagen_data, nombre: e.nombre }
       }));
-      window.open(`https://web.whatsapp.com/send?phone=${numero}&text=${encodeURIComponent(texto)}`, '_blank');
       showToast('Abriendo WhatsApp Web: la imagen se pega sola, solo falta apretar Enviar', 'success');
       return;
     }
