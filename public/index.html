@@ -118,10 +118,23 @@
             <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
             <span>Alta Usuario</span>
           </button>
-          <button class="admin-tab" onclick="switchAdminTab('configuracion')">
-            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V8a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            <span>Configuraci&oacute;n</span>
-          </button>
+          <div class="admin-tab-group expanded" data-group="configuracion">
+            <button class="admin-tab-group-toggle" onclick="toggleAdminGroup('configuracion')">
+              <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82A1.65 1.65 0 0 0 3 13.09H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V8a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Configuraci&oacute;n</span>
+              <svg class="group-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <div class="admin-tab-submenu">
+              <button class="admin-tab" onclick="switchAdminTab('configuracion')">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.3" y1="16.3" x2="15" y2="18"/></svg>
+                <span>Analizar recibos</span>
+              </button>
+              <button class="admin-tab" onclick="switchAdminTab('salutacion')">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4"/><rect x="5" y="12" width="14" height="9"/><line x1="12" y1="8" x2="12" y2="21"/><path d="M12 8c-1.5-4-6-4-6-1.5S9 8 12 8Z"/><path d="M12 8c1.5-4 6-4 6-1.5S15 8 12 8Z"/></svg>
+                <span>Salutaci&oacute;n</span>
+              </button>
+            </div>
+          </div>
         </nav>
       </aside>
 
@@ -665,6 +678,45 @@
                   </thead>
                   <tbody id="config-tabla-existentes"></tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Salutacion -->
+      <div id="tab-salutacion" class="tab-content">
+        <div class="card">
+          <h2>Salutaci&oacute;n de Cumplea&ntilde;os</h2>
+          <div class="info-box">
+            Suba la imagen de tarjeta de saludo que se enviar&aacute; por WhatsApp cuando un empleado cumpla a&ntilde;os,
+            seg&uacute;n el sexo cargado en su ficha (Masculino / Femenino).
+          </div>
+          <div class="salutacion-grid">
+            <div class="firma-editor">
+              <h4>Imagen para MASCULINO</h4>
+              <p class="firma-descripcion">Seleccione un archivo JPG o PNG. Tama&ntilde;o m&aacute;ximo 2MB.</p>
+              <input type="file" id="salutacion-masculino-input" accept="image/png,image/jpeg" onchange="previsualizarSalutacion('MASCULINO', event)">
+              <div class="firma-canvas-wrapper" style="margin-top:12px">
+                <img id="salutacion-masculino-preview" style="max-width:100%;max-height:200px;display:none">
+                <div class="firma-canvas-placeholder" id="salutacion-masculino-placeholder">La vista previa aparecer&aacute; aqu&iacute;</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarSalutacion('MASCULINO')">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarSalutacion('MASCULINO')">Guardar Imagen</button>
+              </div>
+            </div>
+            <div class="firma-editor">
+              <h4>Imagen para FEMENINO</h4>
+              <p class="firma-descripcion">Seleccione un archivo JPG o PNG. Tama&ntilde;o m&aacute;ximo 2MB.</p>
+              <input type="file" id="salutacion-femenino-input" accept="image/png,image/jpeg" onchange="previsualizarSalutacion('FEMENINO', event)">
+              <div class="firma-canvas-wrapper" style="margin-top:12px">
+                <img id="salutacion-femenino-preview" style="max-width:100%;max-height:200px;display:none">
+                <div class="firma-canvas-placeholder" id="salutacion-femenino-placeholder">La vista previa aparecer&aacute; aqu&iacute;</div>
+              </div>
+              <div class="firma-editor-actions">
+                <button class="btn btn-outline btn-sm" onclick="limpiarSalutacion('FEMENINO')">Limpiar</button>
+                <button class="btn btn-primary" onclick="guardarSalutacion('FEMENINO')">Guardar Imagen</button>
               </div>
             </div>
           </div>

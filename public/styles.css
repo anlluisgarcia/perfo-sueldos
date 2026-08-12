@@ -788,6 +788,10 @@ tr:hover td {
 }
 
 .cumple-hoy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--success);
@@ -999,6 +1003,18 @@ tr:hover td {
 
 .modal-cumpleanios-content {
   max-width: 560px;
+}
+
+/* ========== SALUTACION (tarjetas de cumpleaños) ========== */
+.salutacion-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .salutacion-grid { grid-template-columns: 1fr; }
 }
 
 .firma-preview-modal {

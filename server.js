@@ -1400,6 +1400,65 @@ app.delete('/api/admin/firma', authAdmin, requiereMenu('firmas'), async (req, re
   }
 });
 
+// ==================== ADMIN - SALUTACION (tarjetas de cumpleaños) ====================
+
+const SEXOS_SALUTACION = ['MASCULINO', 'FEMENINO'];
+
+app.get('/api/admin/salutacion', authAdmin, requiereMenu('configuracion'), async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.exec('SELECT sexo, imagen_data, updated_at FROM salutacion_imagenes');
+    const imagenes = {};
+    if (result.length > 0) {
+      result[0].values.forEach(([sexo, imagen_data, updated_at]) => {
+        imagenes[sexo] = { imagen_data, updated_at };
+      });
+    }
+    res.json({ imagenes });
+  } catch (err) {
+    console.error('Salutacion GET error:', err);
+    res.status(500).json({ error: 'Error al obtener las imágenes de saludo' });
+  }
+});
+
+app.post('/api/admin/salutacion', authAdmin, requiereMenu('configuracion'), async (req, res) => {
+  try {
+    const { sexo, imagen_data } = req.body;
+    if (!SEXOS_SALUTACION.includes(sexo)) {
+      return res.status(400).json({ error: 'Sexo inválido' });
+    }
+    if (!imagen_data) {
+      return res.status(400).json({ error: 'La imagen es obligatoria' });
+    }
+    const db = getDb();
+    const existing = await db.exec('SELECT sexo FROM salutacion_imagenes WHERE sexo = ?', [sexo]);
+    if (existing.length > 0 && existing[0].values.length > 0) {
+      await db.run('UPDATE salutacion_imagenes SET imagen_data = ? WHERE sexo = ?', [imagen_data, sexo]);
+    } else {
+      await db.run('INSERT INTO salutacion_imagenes (sexo, imagen_data) VALUES (?, ?)', [sexo, imagen_data]);
+    }
+    res.json({ message: 'Imagen guardada exitosamente' });
+  } catch (err) {
+    console.error('Salutacion POST error:', err);
+    res.status(500).json({ error: 'Error al guardar la imagen' });
+  }
+});
+
+app.delete('/api/admin/salutacion/:sexo', authAdmin, requiereMenu('configuracion'), async (req, res) => {
+  try {
+    const { sexo } = req.params;
+    if (!SEXOS_SALUTACION.includes(sexo)) {
+      return res.status(400).json({ error: 'Sexo inválido' });
+    }
+    const db = getDb();
+    await db.run('DELETE FROM salutacion_imagenes WHERE sexo = ?', [sexo]);
+    res.json({ message: 'Imagen eliminada exitosamente' });
+  } catch (err) {
+    console.error('Salutacion DELETE error:', err);
+    res.status(500).json({ error: 'Error al eliminar la imagen' });
+  }
+});
+
 // ==================== RUTAS ADMIN - USUARIOS ADMIN ====================
 
 function noOperador(req, res, next) {
@@ -1581,7 +1640,7 @@ app.get('/api/admin/cumpleanios', authAdmin, async (req, res) => {
   try {
     const db = getDb();
     const result = await db.exec(`
-      SELECT e.nombre, d.fecha_nacimiento
+      SELECT e.id, e.nombre, d.fecha_nacimiento, d.sexo, d.celular_empleado
       FROM empleados e
       JOIN empleados_datos d ON d.empleado_id = e.id
       WHERE e.estado = 'activo' AND d.fecha_nacimiento IS NOT NULL
@@ -1592,10 +1651,10 @@ app.get('/api/admin/cumpleanios', authAdmin, async (req, res) => {
     const proximos = [];
 
     if (result.length > 0) {
-      result[0].values.forEach(([nombre, fechaNacimiento]) => {
+      result[0].values.forEach(([id, nombre, fechaNacimiento, sexo, celular_empleado]) => {
         const dias = diasParaProximoCumple(fechaNacimiento, hoy);
         if (dias === null) return;
-        if (dias === 0) cumpleHoy.push({ nombre, fecha_nacimiento: fechaNacimiento });
+        if (dias === 0) cumpleHoy.push({ id, nombre, fecha_nacimiento: fechaNacimiento, sexo, celular_empleado });
         else if (dias <= 3) proximos.push({ nombre, fecha_nacimiento: fechaNacimiento, dias });
       });
     }

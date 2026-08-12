@@ -262,6 +262,17 @@ async function ensureSchema() {
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  // salutacion_imagenes (una fila por sexo: MASCULINO / FEMENINO, tarjeta de
+  // saludo de cumpleaños a enviar por WhatsApp segun el sexo del empleado)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS salutacion_imagenes (
+      sexo VARCHAR(20) PRIMARY KEY,
+      imagen_data LONGTEXT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
 }
 
 async function ensureDefaultAdmin() {

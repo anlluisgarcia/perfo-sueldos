@@ -330,7 +330,8 @@ function aplicarPermisosUI() {
 
   document.querySelectorAll('.admin-tab').forEach(btn => {
     const m = (btn.getAttribute('onclick') || '').match(/switchAdminTab\('([a-z]+)'\)/);
-    const clave = m ? m[1] : '';
+    // "salutacion" es una vista dentro del menu Configuracion: comparte su permiso.
+    const clave = m ? (m[1] === 'salutacion' ? 'configuracion' : m[1]) : '';
     const ocultoPorOperador = permiso === 'operador' && (clave === 'usuarios' || clave === 'configuracion');
     btn.style.display = (ocultoPorOperador || !tieneMenu(clave)) ? 'none' : '';
   });
@@ -380,6 +381,8 @@ async function cargarEstadisticas() {
 }
 
 // ==================== CUMPLEAÑOS ====================
+let cumpleHoyCache = [];
+
 async function verificarCumpleanios() {
   try {
     const res = await fetch(`${API}/api/admin/cumpleanios`, { headers: headersAuth() });
@@ -388,11 +391,17 @@ async function verificarCumpleanios() {
 
     const hoy = data.hoy || [];
     const proximos = data.proximos || [];
+    cumpleHoyCache = hoy;
     if (hoy.length === 0 && proximos.length === 0) return;
 
     let html = '';
     if (hoy.length > 0) {
-      html += hoy.map(e => `<p class="cumple-hoy">&#127881; HOY CUMPLE ${e.nombre}</p>`).join('');
+      html += hoy.map(e => `
+        <p class="cumple-hoy">
+          <span>&#127881; HOY CUMPLE ${e.nombre}</span>
+          <button type="button" class="btn-accion btn-accion-whatsapp" title="Enviar saludo por WhatsApp a ${escAttr(e.nombre)}" onclick="enviarSaludoCumpleanios(${e.id})">${ICONO_WHATSAPP}</button>
+        </p>
+      `).join('');
     }
     if (proximos.length > 0) {
       html += '<p class="cumple-proximos-titulo">Se aproxima el cumplea&ntilde;os de:</p>';
@@ -437,6 +446,7 @@ function switchAdminTab(tab) {
   if (tab === 'recibos') cargarSelectEmpleados();
   if (tab === 'historial') cargarHistorialRecibos();
   if (tab === 'usuarios') cargarUsuarios();
+  if (tab === 'salutacion') cargarSalutacionPreview();
 }
 
 // ==================== EMPLEADOS CRUD ====================
@@ -1086,6 +1096,130 @@ function enviarWhatsappEmpleado(id) {
     return;
   }
   window.open(`https://wa.me/${numero}`, '_blank');
+}
+
+// Descarga un dataURL (imagen en base64) como archivo, para que el admin lo
+// adjunte a mano en el chat de WhatsApp que se abre junto con esta funcion.
+function descargarDataUrl(dataUrl, nombreBase) {
+  const match = /^data:image\/(png|jpeg);/.exec(dataUrl);
+  const ext = match && match[1] === 'jpeg' ? 'jpg' : 'png';
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `${nombreBase}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// wa.me no permite adjuntar imagenes automaticamente: se descarga la tarjeta
+// de saludo (segun el sexo del empleado) y a la vez se abre el chat, para que
+// quien administra el sistema la arrastre al chat manualmente.
+async function enviarSaludoCumpleanios(id) {
+  const e = cumpleHoyCache.find(x => x.id === id);
+  if (!e) return;
+
+  const numero = telefonoWhatsapp(e.celular_empleado);
+  if (!numero) {
+    showToast('El empleado no tiene cargado un celular valido en su ficha', 'error');
+    return;
+  }
+
+  const sexo = String(e.sexo || '').toUpperCase();
+  if (sexo !== 'MASCULINO' && sexo !== 'FEMENINO') {
+    showToast('El empleado no tiene el sexo (Masculino/Femenino) cargado en su ficha', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/api/admin/salutacion`, { headers: headersAuth() });
+    const data = await leerJson(res);
+    if (!res.ok) throw new Error(data.error);
+    const imagen = data.imagenes && data.imagenes[sexo];
+    if (!imagen || !imagen.imagen_data) {
+      showToast(`Falta cargar la imagen de saludo para ${sexo} en Configuración > Salutación`, 'error');
+      return;
+    }
+    descargarDataUrl(imagen.imagen_data, `saludo-cumpleanios-${e.nombre.replace(/[^a-zA-Z0-9]+/g, '_')}`);
+    const texto = `¡Feliz cumpleaños, ${e.nombre}! \u{1F389}\u{1F382}`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, '_blank');
+  } catch (err) {
+    console.error(err);
+    showToast('Error al obtener la imagen de saludo', 'error');
+  }
+}
+
+// ---------- Salutacion: carga de imagenes de saludo (Configuración > Salutación) ----------
+let salutacionDataUrl = { MASCULINO: null, FEMENINO: null };
+
+function previsualizarSalutacion(sexo, event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!['image/png', 'image/jpeg'].includes(file.type)) {
+    showToast('Solo se permiten archivos JPG o PNG', 'error');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('El archivo no debe superar los 2MB', 'error');
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    salutacionDataUrl[sexo] = e.target.result;
+    const img = document.getElementById(`salutacion-${sexo.toLowerCase()}-preview`);
+    img.src = salutacionDataUrl[sexo];
+    img.style.display = '';
+    document.getElementById(`salutacion-${sexo.toLowerCase()}-placeholder`).style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function limpiarSalutacion(sexo) {
+  salutacionDataUrl[sexo] = null;
+  const input = document.getElementById(`salutacion-${sexo.toLowerCase()}-input`);
+  if (input) input.value = '';
+  const img = document.getElementById(`salutacion-${sexo.toLowerCase()}-preview`);
+  if (img) { img.src = ''; img.style.display = 'none'; }
+  const ph = document.getElementById(`salutacion-${sexo.toLowerCase()}-placeholder`);
+  if (ph) ph.style.display = '';
+}
+
+async function guardarSalutacion(sexo) {
+  if (!salutacionDataUrl[sexo]) {
+    showToast('Debe seleccionar un archivo JPG o PNG', 'error');
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/api/admin/salutacion`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ sexo, imagen_data: salutacionDataUrl[sexo] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast('Imagen guardada exitosamente');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function cargarSalutacionPreview() {
+  try {
+    const res = await fetch(`${API}/api/admin/salutacion`, { headers: headersAuth() });
+    const data = await res.json();
+    ['MASCULINO', 'FEMENINO'].forEach(sexo => {
+      const imagen = data.imagenes && data.imagenes[sexo];
+      if (!imagen || !imagen.imagen_data) return;
+      salutacionDataUrl[sexo] = imagen.imagen_data;
+      const img = document.getElementById(`salutacion-${sexo.toLowerCase()}-preview`);
+      img.src = imagen.imagen_data;
+      img.style.display = '';
+      document.getElementById(`salutacion-${sexo.toLowerCase()}-placeholder`).style.display = 'none';
+    });
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 // ==================== ADMIN - LISTADO DE FICHAS ====================
