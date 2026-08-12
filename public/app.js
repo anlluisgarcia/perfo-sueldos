@@ -1568,6 +1568,32 @@ function filtrarFichas() {
     return coincideTexto && coincideEmpresa && coincideFicha;
   });
   renderFichas(filtradas);
+  actualizarContadorFichas(filtradas, empresa);
+}
+
+// Muestra la cantidad de empleados visibles con el filtro actual: desglosado
+// por empresa cuando no hay una empresa puntual elegida, o el total de esa
+// empresa cuando si la hay.
+function actualizarContadorFichas(filtradas, empresaSeleccionada) {
+  const contador = document.getElementById('fichas-contador');
+  if (!contador) return;
+
+  if (empresaSeleccionada) {
+    const etiqueta = empresaSeleccionada === '__sin__' ? 'sin empresa asignada' : empresaSeleccionada;
+    contador.textContent = `${filtradas.length} empleado${filtradas.length === 1 ? '' : 's'} (${etiqueta})`;
+    return;
+  }
+
+  const conteos = {};
+  let sinAsignar = 0;
+  filtradas.forEach(f => {
+    if (!f.empresa) { sinAsignar++; return; }
+    conteos[f.empresa] = (conteos[f.empresa] || 0) + 1;
+  });
+
+  const partes = EMPRESAS.map(emp => `${emp}: ${conteos[emp] || 0}`);
+  if (sinAsignar > 0) partes.push(`Sin asignar: ${sinAsignar}`);
+  contador.textContent = `Total: ${filtradas.length} — ${partes.join(' · ')}`;
 }
 
 function limpiarFiltroFichas() {

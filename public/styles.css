@@ -878,6 +878,13 @@ tr:hover td {
   font-weight: 700;
 }
 
+.fichas-contador {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin: 0 0 12px;
+}
+
 @media (max-width: 700px) {
   .banner-eventos { left: 8px; right: 8px; bottom: 8px; padding: 12px; max-height: 55vh; }
 }
