@@ -1159,8 +1159,8 @@ function previsualizarSalutacion(sexo, event) {
     event.target.value = '';
     return;
   }
-  if (file.size > 2 * 1024 * 1024) {
-    showToast('El archivo no debe superar los 2MB', 'error');
+  if (file.size > 3 * 1024 * 1024) {
+    showToast('El archivo no debe superar los 3MB', 'error');
     event.target.value = '';
     return;
   }
