@@ -335,6 +335,11 @@ function aplicarPermisosUI() {
     btn.style.display = (ocultoPorOperador || !tieneMenu(clave)) ? 'none' : '';
   });
 
+  document.querySelectorAll('.admin-tab-group').forEach(grupo => {
+    const algunoVisible = Array.from(grupo.querySelectorAll('.admin-tab')).some(b => b.style.display !== 'none');
+    grupo.style.display = algunoVisible ? '' : 'none';
+  });
+
   if (tieneMenu('empleados')) cargarEmpleados();
   if (tieneMenu('firmas')) cargarFirmasAdmin();
   if (tieneMenu('historial')) cargarHistorialRecibos();
@@ -413,11 +418,19 @@ function cerrarModalCumpleanios() {
 }
 
 // ==================== ADMIN TABS ====================
+function toggleAdminGroup(nombre) {
+  const grupo = document.querySelector(`.admin-tab-group[data-group="${nombre}"]`);
+  if (grupo) grupo.classList.toggle('expanded');
+}
+
 function switchAdminTab(tab) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelector(`.admin-tab[onclick*="${tab}"]`).classList.add('active');
+  const btn = document.querySelector(`.admin-tab[onclick*="${tab}"]`);
+  btn.classList.add('active');
   document.getElementById(`tab-${tab}`).classList.add('active');
+  const grupo = btn.closest('.admin-tab-group');
+  if (grupo) grupo.classList.add('expanded');
 
   if (tab === 'fichas') cargarFichas();
   if (tab === 'firmas') cargarFirmasAdmin();

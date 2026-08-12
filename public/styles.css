@@ -391,6 +391,68 @@ body {
   flex-shrink: 0;
 }
 
+.admin-tab-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  border-radius: 6px;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.admin-tab-group-toggle:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.admin-tab-group-toggle .tab-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.admin-tab-group-toggle .group-caret {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.admin-tab-group.expanded .admin-tab-group-toggle .group-caret {
+  transform: rotate(90deg);
+}
+
+.admin-tab-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 16px;
+  margin-top: 2px;
+}
+
+.admin-tab-group.expanded .admin-tab-submenu {
+  display: flex;
+}
+
+.admin-tab-submenu .admin-tab {
+  padding: 9px 14px;
+  font-size: 13.5px;
+}
+
+.admin-tab-submenu .admin-tab .tab-icon {
+  width: 17px;
+  height: 17px;
+}
+
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
@@ -1036,6 +1098,9 @@ tr:hover td {
   .admin-sidebar { position: static; }
   .admin-tabs { flex-direction: row; flex-wrap: wrap; }
   .admin-tab { flex: 1 1 auto; justify-content: center; }
+  .admin-tab-group { flex: 1 1 100%; }
+  .admin-tab-submenu { flex-direction: row; flex-wrap: wrap; padding-left: 0; }
+  .admin-tab-submenu .admin-tab { flex: 1 1 auto; justify-content: center; }
 }
 
 @media (max-width: 768px) {
