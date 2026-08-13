@@ -1675,7 +1675,7 @@ app.get('/api/admin/eventos', authAdmin, requiereMenu('empleados', 'fichas'), as
   try {
     const db = getDb();
     const result = await db.exec(`
-      SELECT e.id, e.nombre, e.empresa, d.fecha_nacimiento, e.fecha_estudios_medicos, e.fecha_antecedentes_penales
+      SELECT e.id, e.nombre, e.empresa, d.fecha_nacimiento, e.fecha_estudios_medicos, e.fecha_antecedentes_penales, d.carnet_vencimiento
       FROM empleados e
       LEFT JOIN empleados_datos d ON d.empleado_id = e.id
       WHERE e.estado = 'activo'

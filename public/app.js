@@ -439,6 +439,7 @@ function cerrarModalCumpleanios() {
 const MS_DIA = 24 * 60 * 60 * 1000;
 const DIAS_AVISO_ESTUDIOS = 25;
 const DIAS_AVISO_ANTECEDENTES = 10;
+const DIAS_AVISO_CARNET = 30;
 
 function hoyLocalSinHora() {
   const h = new Date();
@@ -458,6 +459,17 @@ function diasParaVencerAnual(fecha) {
   const anio = parseInt(partes[0], 10), mes = parseInt(partes[1], 10) - 1, dia = parseInt(partes[2], 10);
   if (!Number.isFinite(anio) || !Number.isFinite(mes) || !Number.isFinite(dia)) return null;
   const vencimiento = new Date(anio + 1, mes, dia);
+  return Math.round((vencimiento - hoyLocalSinHora()) / MS_DIA);
+}
+
+// Vencimiento Carnet de Conducir: la fecha cargada YA es la fecha de
+// vencimiento (a diferencia de Estudios/Antecedentes, que son anuales).
+function diasParaVencerFecha(fecha) {
+  const partes = String(fecha || '').substring(0, 10).split('-');
+  if (partes.length !== 3) return null;
+  const anio = parseInt(partes[0], 10), mes = parseInt(partes[1], 10) - 1, dia = parseInt(partes[2], 10);
+  if (!Number.isFinite(anio) || !Number.isFinite(mes) || !Number.isFinite(dia)) return null;
+  const vencimiento = new Date(anio, mes, dia);
   return Math.round((vencimiento - hoyLocalSinHora()) / MS_DIA);
 }
 
@@ -484,8 +496,9 @@ function textoVencimiento(fecha, dias) {
 }
 
 // Aviso emergente al iniciar sesion: empleados con Estudios Medicos a vencer
-// en 25 dias o menos (incluye vencidos), o Antecedentes Penales en 10 dias o
-// menos (incluye vencidos).
+// en 25 dias o menos (incluye vencidos), Antecedentes Penales en 10 dias o
+// menos (incluye vencidos), o Carnet de Conducir en 30 dias o menos (incluye
+// vencidos).
 async function verificarEventosProximos() {
   try {
     const res = await fetch(`${API}/api/admin/eventos`, { headers: headersAuth() });
@@ -495,8 +508,10 @@ async function verificarEventosProximos() {
     const proximos = eventos.filter(e => {
       const diasEstudios = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
       const diasAntecedentes = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+      const diasCarnet = e.carnet_vencimiento ? diasParaVencerFecha(e.carnet_vencimiento) : null;
       return (diasEstudios !== null && diasEstudios <= DIAS_AVISO_ESTUDIOS) ||
-             (diasAntecedentes !== null && diasAntecedentes <= DIAS_AVISO_ANTECEDENTES);
+             (diasAntecedentes !== null && diasAntecedentes <= DIAS_AVISO_ANTECEDENTES) ||
+             (diasCarnet !== null && diasCarnet <= DIAS_AVISO_CARNET);
     });
 
     if (proximos.length === 0) return;
@@ -504,11 +519,13 @@ async function verificarEventosProximos() {
     document.getElementById('banner-eventos-cuerpo').innerHTML = proximos.map(e => {
       const diasEstudios = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
       const diasAntecedentes = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+      const diasCarnet = e.carnet_vencimiento ? diasParaVencerFecha(e.carnet_vencimiento) : null;
       return `
         <tr>
           <td>${e.nombre}</td>
           <td>${textoVencimiento(e.fecha_estudios_medicos, diasEstudios)}</td>
           <td>${textoVencimiento(e.fecha_antecedentes_penales, diasAntecedentes)}</td>
+          <td>${textoVencimiento(e.carnet_vencimiento, diasCarnet)}</td>
         </tr>
       `;
     }).join('');
@@ -547,7 +564,8 @@ function filtrarEventos() {
     filtrados = filtrados.filter(e => {
       const de = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
       const da = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
-      return (de !== null && de < 0) || (da !== null && da < 0);
+      const dc = e.carnet_vencimiento ? diasParaVencerFecha(e.carnet_vencimiento) : null;
+      return (de !== null && de < 0) || (da !== null && da < 0) || (dc !== null && dc < 0);
     });
   } else if (tipo === 'cumpleanios') {
     filtrados = filtrados.filter(e => !!e.fecha_nacimiento);
@@ -576,14 +594,16 @@ function filtrarEventos() {
 function renderEventos(lista) {
   const tbody = document.getElementById('tabla-eventos');
   if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-500);padding:40px">No hay eventos que coincidan con el filtro</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px">No hay eventos que coincidan con el filtro</td></tr>';
     return;
   }
   tbody.innerHTML = lista.map(e => {
     const diasEstudios = e.fecha_estudios_medicos ? diasParaVencerAnual(e.fecha_estudios_medicos) : null;
     const diasAntecedentes = e.fecha_antecedentes_penales ? diasParaVencerAnual(e.fecha_antecedentes_penales) : null;
+    const diasCarnet = e.carnet_vencimiento ? diasParaVencerFecha(e.carnet_vencimiento) : null;
     const claseEstudios = diasEstudios !== null && diasEstudios < 0 ? 'dato-vencido' : '';
     const claseAntecedentes = diasAntecedentes !== null && diasAntecedentes < 0 ? 'dato-vencido' : '';
+    const claseCarnet = diasCarnet !== null && diasCarnet < 0 ? 'dato-vencido' : '';
     return `
       <tr>
         <td><strong>${e.nombre}</strong></td>
@@ -591,6 +611,7 @@ function renderEventos(lista) {
         <td>${e.fecha_nacimiento ? formatFechaCorta(e.fecha_nacimiento) : '-'}</td>
         <td class="${claseEstudios}">${textoVencimiento(e.fecha_estudios_medicos, diasEstudios)}</td>
         <td class="${claseAntecedentes}">${textoVencimiento(e.fecha_antecedentes_penales, diasAntecedentes)}</td>
+        <td class="${claseCarnet}">${textoVencimiento(e.carnet_vencimiento, diasCarnet)}</td>
       </tr>
     `;
   }).join('');

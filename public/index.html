@@ -291,7 +291,7 @@
           <div class="section-header">
             <h2>Listado de Eventos</h2>
           </div>
-          <p class="firma-descripcion">Cumplea&ntilde;os, Estudios M&eacute;dicos y Antecedentes Penales de los empleados activos. Estudios y Antecedentes vencidos se muestran en rojo.</p>
+          <p class="firma-descripcion">Cumplea&ntilde;os, Estudios M&eacute;dicos, Antecedentes Penales y Vencimiento de Carnet de Conducir de los empleados activos. Datos vencidos se muestran en rojo.</p>
 
           <div style="display:flex;gap:10px;align-items:center;margin:16px 0;flex-wrap:wrap">
             <select id="eventos-filtro-empresa" onchange="filtrarEventos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
@@ -301,7 +301,7 @@
             </select>
             <select id="eventos-filtro-tipo" onchange="filtrarEventos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
               <option value="">Todos los eventos</option>
-              <option value="vencidos">Datos vencidos (Estudios M&eacute;dicos y Antecedentes)</option>
+              <option value="vencidos">Datos vencidos (Estudios M&eacute;dicos, Antecedentes y Carnet)</option>
               <option value="cumpleanios">Cumplea&ntilde;os</option>
             </select>
             <select id="eventos-orden" onchange="filtrarEventos()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
@@ -320,6 +320,7 @@
                   <th>Cumplea&ntilde;os</th>
                   <th>Estudios M&eacute;dicos</th>
                   <th>Antecedentes Penales</th>
+                  <th>Vencimiento Carnet de Conducir</th>
                 </tr>
               </thead>
               <tbody id="tabla-eventos"></tbody>
@@ -1195,13 +1196,13 @@
   <!-- AVISO EMERGENTE: vencimientos proximos de Estudios Medicos y Antecedentes Penales -->
   <div id="banner-eventos" class="banner-eventos">
     <div class="banner-eventos-header">
-      <strong>&#9888; Pr&oacute;ximos vencimientos: Estudios M&eacute;dicos y Antecedentes Penales</strong>
+      <strong>&#9888; Pr&oacute;ximos vencimientos: Estudios M&eacute;dicos, Antecedentes Penales y Carnet de Conducir</strong>
       <button type="button" class="banner-eventos-cerrar" onclick="cerrarBannerEventos()">&times;</button>
     </div>
     <div class="table-responsive">
       <table class="tabla-banner-eventos">
         <thead>
-          <tr><th>Empleado</th><th>Estudios M&eacute;dicos</th><th>Antecedentes Penales</th></tr>
+          <tr><th>Empleado</th><th>Estudios M&eacute;dicos</th><th>Antecedentes Penales</th><th>Carnet de Conducir</th></tr>
         </thead>
         <tbody id="banner-eventos-cuerpo"></tbody>
       </table>
