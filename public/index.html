@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recibos de Sueldos</title>
-  <link rel="stylesheet" href="styles.css?v=20260820c">
+  <link rel="stylesheet" href="styles.css?v=20260820d">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Fuentes decorativas (solo para firmas): se cargan sin bloquear el renderizado de la pagina -->
@@ -1219,12 +1219,74 @@
 
   <!-- MODAL FIRMA DE EMPLEADO -->
   <div id="modal-firma-emp" class="modal hidden" onclick="if (event.target === this) cerrarModalFirmaEmpleado()">
-    <div class="modal-content">
+    <div class="modal-content modal-editar-empleado-content">
       <h3 id="modal-firma-emp-titulo">Firma</h3>
-      <div class="firma-preview-box" style="text-align:center">
-        <img id="modal-firma-emp-img" style="max-width:100%;max-height:220px" alt="Firma del empleado">
-        <p id="modal-firma-emp-sin-firma" class="hidden" style="color:var(--gray-500)">Este empleado todav&iacute;a no registr&oacute; su firma.</p>
+
+      <!-- Vista previa firma actual -->
+      <div id="modal-firma-emp-actual-container" class="firma-preview-box hidden">
+        <h4>Firma actual</h4>
+        <div class="firma-preview">
+          <img id="modal-firma-emp-img" src="" alt="Firma del empleado">
+        </div>
+        <p class="firma-fecha-guardada" id="modal-firma-emp-fecha"></p>
       </div>
+      <div id="modal-firma-emp-sin-firma" class="info-box hidden">
+        <strong>Este empleado todav&iacute;a no registr&oacute; su firma.</strong> Puede cargarle una desde aqu&iacute; o esperar a que la registre desde su portal.
+      </div>
+
+      <!-- Sub-tabs de firma -->
+      <div class="firma-subtabs" style="margin-top:20px">
+        <button class="firma-subtab active" onclick="switchFirmaEmpSubtab('dibujar')">Firma Dibujada</button>
+        <button class="firma-subtab" onclick="switchFirmaEmpSubtab('escrita')">Firma Escrita</button>
+      </div>
+
+      <!-- Sub-tab: Dibujar -->
+      <div id="firma-emp-sub-dibujar" class="firma-sub-content active">
+        <div class="firma-editor">
+          <div class="firma-canvas-wrapper">
+            <canvas id="firma-emp-canvas" width="560" height="200"></canvas>
+            <div class="firma-canvas-placeholder" id="firma-emp-placeholder">Dibuje aqu&iacute; la firma con el mouse o dedo</div>
+          </div>
+          <div class="firma-editor-actions">
+            <button class="btn btn-outline btn-sm" onclick="limpiarFirmaEmpCanvas()">Limpiar</button>
+            <button class="btn btn-primary" onclick="guardarFirmaEmpDibujada()">Guardar Firma</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-tab: Escrita -->
+      <div id="firma-emp-sub-escrita" class="firma-sub-content">
+        <div class="firma-editor">
+          <input type="text" id="firma-emp-escrita-input" placeholder="Escriba nombre y apellido..." oninput="previsualizarFirmaEmpEscrita()" maxlength="40">
+          <div class="firma-escrita-fuentes" style="margin-top:12px">
+            <label class="firma-fuente-opcion active" onclick="seleccionarFuenteFirmaEmp('Dancing Script')">
+              <input type="radio" name="firma-emp-fuente" value="Dancing Script" checked hidden>
+              <span class="firma-fuente-preview" style="font-family:'Dancing Script',cursive">Firma ejemplo</span>
+            </label>
+            <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirmaEmp('Great Vibes')">
+              <input type="radio" name="firma-emp-fuente" value="Great Vibes" hidden>
+              <span class="firma-fuente-preview" style="font-family:'Great Vibes',cursive">Firma ejemplo</span>
+            </label>
+            <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirmaEmp('Sacramento')">
+              <input type="radio" name="firma-emp-fuente" value="Sacramento" hidden>
+              <span class="firma-fuente-preview" style="font-family:'Sacramento',cursive">Firma ejemplo</span>
+            </label>
+            <label class="firma-fuente-opcion" onclick="seleccionarFuenteFirmaEmp('Pacifico')">
+              <input type="radio" name="firma-emp-fuente" value="Pacifico" hidden>
+              <span class="firma-fuente-preview" style="font-family:'Pacifico',cursive">Firma ejemplo</span>
+            </label>
+          </div>
+          <div class="firma-canvas-wrapper" style="margin-top:12px">
+            <canvas id="firma-emp-escrita-canvas" width="560" height="200"></canvas>
+            <div class="firma-canvas-placeholder" id="firma-emp-escrita-placeholder">La vista previa aparecer&aacute; aqu&iacute;</div>
+          </div>
+          <div class="firma-editor-actions">
+            <button class="btn btn-outline btn-sm" onclick="limpiarFirmaEmpEscrita()">Limpiar</button>
+            <button class="btn btn-primary" onclick="guardarFirmaEmpEscrita()">Guardar Firma</button>
+          </div>
+        </div>
+      </div>
+
       <div class="modal-actions">
         <button class="btn btn-danger" id="modal-firma-emp-eliminar">Eliminar Firma</button>
         <button class="btn btn-outline" onclick="cerrarModalFirmaEmpleado()">Cerrar</button>
@@ -1370,6 +1432,6 @@
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=20260820c"></script>
+  <script src="app.js?v=20260820d"></script>
 </body>
 </html>

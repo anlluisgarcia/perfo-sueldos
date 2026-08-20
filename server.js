@@ -1427,6 +1427,26 @@ app.get('/api/admin/firmas-empleados', authAdmin, requiereMenu('firmas'), async 
   }
 });
 
+app.post('/api/admin/firmas-empleados/:id', authAdmin, requiereMenu('firmas'), async (req, res) => {
+  try {
+    const { firma_data } = req.body;
+    if (!firma_data) {
+      return res.status(400).json({ error: 'La firma es obligatoria' });
+    }
+    const db = getDb();
+    const existing = await db.exec('SELECT id FROM firmas_empleados WHERE empleado_id = ?', [req.params.id]);
+    if (existing.length > 0 && existing[0].values.length > 0) {
+      await db.run('UPDATE firmas_empleados SET firma_data = ? WHERE empleado_id = ?', [firma_data, req.params.id]);
+    } else {
+      await db.run('INSERT INTO firmas_empleados (empleado_id, firma_data) VALUES (?, ?)', [req.params.id, firma_data]);
+    }
+    res.json({ message: 'Firma guardada exitosamente' });
+  } catch (err) {
+    console.error('Firma empleado (admin) POST error:', err);
+    res.status(500).json({ error: 'Error al guardar la firma del empleado' });
+  }
+});
+
 app.delete('/api/admin/firmas-empleados/:id', authAdmin, requiereMenu('firmas'), async (req, res) => {
   try {
     const db = getDb();

@@ -2303,29 +2303,194 @@ function filtrarFirmasEmpleados() {
   renderFirmasEmpleados(filtrados);
 }
 
+let firmaEmpEditandoId = null;
+
 function editarFirmaEmpleado(id) {
   const emp = firmasEmpleadosCache.find(e => e.id === id);
   if (!emp) return;
+  firmaEmpEditandoId = id;
   document.getElementById('modal-firma-emp-titulo').textContent = `Firma de ${emp.nombre}`;
-  const img = document.getElementById('modal-firma-emp-img');
+
+  const container = document.getElementById('modal-firma-emp-actual-container');
   const sinFirma = document.getElementById('modal-firma-emp-sin-firma');
   const btnEliminar = document.getElementById('modal-firma-emp-eliminar');
   if (emp.firma_data) {
-    img.src = emp.firma_data;
-    img.classList.remove('hidden');
+    container.classList.remove('hidden');
     sinFirma.classList.add('hidden');
+    document.getElementById('modal-firma-emp-img').src = emp.firma_data;
+    document.getElementById('modal-firma-emp-fecha').textContent = emp.firma_actualizada
+      ? 'Guardada el ' + new Date(emp.firma_actualizada).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
     btnEliminar.classList.remove('hidden');
     btnEliminar.onclick = () => confirmarEliminarFirmaEmpleado(id, emp.nombre);
   } else {
-    img.classList.add('hidden');
+    container.classList.add('hidden');
     sinFirma.classList.remove('hidden');
     btnEliminar.classList.add('hidden');
   }
+
+  switchFirmaEmpSubtab('dibujar');
+  initFirmaEmpCanvas();
+  limpiarFirmaEmpCanvas();
+  limpiarFirmaEmpEscrita();
   document.getElementById('modal-firma-emp').classList.remove('hidden');
 }
 
 function cerrarModalFirmaEmpleado() {
   document.getElementById('modal-firma-emp').classList.add('hidden');
+  firmaEmpEditandoId = null;
+}
+
+// --- Sub-tabs ---
+function switchFirmaEmpSubtab(subtab) {
+  const modal = document.getElementById('modal-firma-emp');
+  modal.querySelectorAll('.firma-subtab').forEach(t => t.classList.remove('active'));
+  modal.querySelectorAll('.firma-sub-content').forEach(t => t.classList.remove('active'));
+  modal.querySelector(`.firma-subtab[onclick*="${subtab}"]`).classList.add('active');
+  document.getElementById(`firma-emp-sub-${subtab}`).classList.add('active');
+}
+
+// --- Dibujar firma ---
+let firmaEmpCanvasCtx = null;
+let firmaEmpDibujando = false;
+let firmaEmpVacia = true;
+let firmaEmpCanvasIniciado = false;
+
+function initFirmaEmpCanvas() {
+  const canvas = document.getElementById('firma-emp-canvas');
+  if (!canvas || firmaEmpCanvasIniciado) return;
+  firmaEmpCanvasIniciado = true;
+  firmaEmpCanvasCtx = canvas.getContext('2d');
+
+  canvas.addEventListener('mousedown', firmaEmpStart);
+  canvas.addEventListener('mousemove', firmaEmpDraw);
+  canvas.addEventListener('mouseup', firmaEmpEnd);
+  canvas.addEventListener('mouseleave', firmaEmpEnd);
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); firmaEmpStart(e.touches[0]); }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); firmaEmpDraw(e.touches[0]); }, { passive: false });
+  canvas.addEventListener('touchend', firmaEmpEnd);
+}
+
+function firmaEmpStart(e) {
+  firmaEmpDibujando = true;
+  firmaEmpVacia = false;
+  document.getElementById('firma-emp-placeholder').style.display = 'none';
+  const canvas = document.getElementById('firma-emp-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  firmaEmpCanvasCtx.beginPath();
+  firmaEmpCanvasCtx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+}
+
+function firmaEmpDraw(e) {
+  if (!firmaEmpDibujando) return;
+  const canvas = document.getElementById('firma-emp-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  firmaEmpCanvasCtx.lineWidth = 2.5;
+  firmaEmpCanvasCtx.lineCap = 'round';
+  firmaEmpCanvasCtx.lineJoin = 'round';
+  firmaEmpCanvasCtx.strokeStyle = '#1e3a5f';
+  firmaEmpCanvasCtx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+  firmaEmpCanvasCtx.stroke();
+}
+
+function firmaEmpEnd() {
+  firmaEmpDibujando = false;
+}
+
+function limpiarFirmaEmpCanvas() {
+  const canvas = document.getElementById('firma-emp-canvas');
+  if (firmaEmpCanvasCtx) {
+    firmaEmpCanvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  firmaEmpVacia = true;
+  document.getElementById('firma-emp-placeholder').style.display = '';
+}
+
+async function guardarFirmaEmpDibujada() {
+  if (firmaEmpVacia) {
+    showToast('Debe dibujar la firma antes de guardar', 'error');
+    return;
+  }
+  const firmaData = document.getElementById('firma-emp-canvas').toDataURL('image/png');
+  await enviarFirmaEmp(firmaData);
+}
+
+// --- Escribir firma ---
+let firmaEmpFuente = 'Dancing Script';
+
+function seleccionarFuenteFirmaEmp(fuente) {
+  firmaEmpFuente = fuente;
+  const modal = document.getElementById('modal-firma-emp');
+  modal.querySelectorAll('#firma-emp-sub-escrita .firma-fuente-opcion').forEach(o => o.classList.remove('active'));
+  modal.querySelector(`#firma-emp-sub-escrita .firma-fuente-opcion input[value="${fuente}"]`).parentElement.classList.add('active');
+  previsualizarFirmaEmpEscrita();
+}
+
+function previsualizarFirmaEmpEscrita() {
+  const texto = document.getElementById('firma-emp-escrita-input').value.trim();
+  const canvas = document.getElementById('firma-emp-escrita-canvas');
+  const ctx = canvas.getContext('2d');
+  const placeholder = document.getElementById('firma-emp-escrita-placeholder');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!texto) {
+    placeholder.style.display = '';
+    return;
+  }
+  placeholder.style.display = 'none';
+  let fontSize = 64;
+  ctx.font = `${fontSize}px '${firmaEmpFuente}', cursive`;
+  while (ctx.measureText(texto).width > canvas.width - 40 && fontSize > 20) {
+    fontSize -= 2;
+    ctx.font = `${fontSize}px '${firmaEmpFuente}', cursive`;
+  }
+  ctx.fillStyle = '#1e3a5f';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(texto, canvas.width / 2, canvas.height / 2);
+}
+
+function limpiarFirmaEmpEscrita() {
+  const input = document.getElementById('firma-emp-escrita-input');
+  if (input) input.value = '';
+  const canvas = document.getElementById('firma-emp-escrita-canvas');
+  if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  const ph = document.getElementById('firma-emp-escrita-placeholder');
+  if (ph) ph.style.display = '';
+}
+
+async function guardarFirmaEmpEscrita() {
+  const texto = document.getElementById('firma-emp-escrita-input').value.trim();
+  if (!texto) {
+    showToast('Debe escribir el nombre para la firma', 'error');
+    return;
+  }
+  previsualizarFirmaEmpEscrita();
+  const canvas = document.getElementById('firma-emp-escrita-canvas');
+  const firmaData = canvas.toDataURL('image/png');
+  await enviarFirmaEmp(firmaData);
+}
+
+// --- Enviar firma al servidor ---
+async function enviarFirmaEmp(firmaData) {
+  if (!firmaEmpEditandoId) return;
+  try {
+    const res = await fetch(`${API}/api/admin/firmas-empleados/${firmaEmpEditandoId}`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ firma_data: firmaData })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast('Firma guardada exitosamente');
+    cerrarModalFirmaEmpleado();
+    cargarFirmasEmpleados();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }
 
 function confirmarEliminarFirmaEmpleado(id, nombre) {
