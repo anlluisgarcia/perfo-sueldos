@@ -3056,17 +3056,20 @@ async function cargarRecibosEmpleado() {
   const emptyState = document.getElementById('empleado-sin-recibos');
   const firmaRequerida = document.getElementById('empleado-firma-requerida');
 
+  let tieneFirma = false;
   try {
     const firmaRes = await fetch(`${API}/api/empleado/mi-firma`, { headers: headersAuth() });
     const firmaInfo = await firmaRes.json();
-    if (!firmaInfo.tiene_firma) {
-      container.innerHTML = '';
-      emptyState.classList.add('hidden');
-      firmaRequerida.classList.remove('hidden');
-      return;
-    }
+    tieneFirma = firmaRes.ok && !!firmaInfo.tiene_firma;
   } catch (err) {
     console.error(err);
+  }
+
+  if (!tieneFirma) {
+    container.innerHTML = '';
+    emptyState.classList.add('hidden');
+    firmaRequerida.classList.remove('hidden');
+    return;
   }
   firmaRequerida.classList.add('hidden');
 
