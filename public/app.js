@@ -240,12 +240,13 @@ async function loginEmpleado(e) {
     if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
     token = data.token;
     userRole = 'empleado';
-    localStorage.setItem('token', token);
-    localStorage.setItem('userRole', 'empleado');
-    localStorage.setItem('userName', data.nombre);
+    sessionStorage.setItem('token', token);
+    sessionStorage.setItem('userRole', 'empleado');
+    sessionStorage.setItem('userName', data.nombre);
     document.getElementById('empleado-nombre').textContent = data.nombre;
     showScreen('empleado-screen');
     cargarRecibosEmpleado();
+    reiniciarTimerInactividad();
   } catch (err) {
     errorEl.textContent = err.message === 'Failed to fetch'
       ? 'No se pudo conectar al servidor'
@@ -275,14 +276,15 @@ async function loginAdmin(e) {
     if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
     token = data.token;
     userRole = 'admin';
-    localStorage.setItem('token', token);
-    localStorage.setItem('userRole', 'admin');
-    localStorage.setItem('userName', data.nombre);
-    localStorage.setItem('userPermiso', data.permiso || 'administrativo');
-    localStorage.setItem('userMenus', data.menus || '');
+    sessionStorage.setItem('token', token);
+    sessionStorage.setItem('userRole', 'admin');
+    sessionStorage.setItem('userName', data.nombre);
+    sessionStorage.setItem('userPermiso', data.permiso || 'administrativo');
+    sessionStorage.setItem('userMenus', data.menus || '');
     document.getElementById('admin-nombre').textContent = data.nombre;
     showScreen('admin-screen');
     cargarDashboard();
+    reiniciarTimerInactividad();
   } catch (err) {
     errorEl.textContent = err.message === 'Failed to fetch'
       ? 'No se pudo conectar al servidor'
@@ -293,17 +295,45 @@ async function loginAdmin(e) {
 function logout() {
   token = '';
   userRole = '';
-  localStorage.removeItem('token');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('userName');
-  localStorage.removeItem('userPermiso');
-  localStorage.removeItem('userMenus');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('userRole');
+  sessionStorage.removeItem('userName');
+  sessionStorage.removeItem('userPermiso');
+  sessionStorage.removeItem('userMenus');
   document.getElementById('emp-dni').value = '';
   document.getElementById('emp-clave').value = '';
   document.getElementById('admin-usuario').value = '';
   document.getElementById('admin-clave').value = '';
   showScreen('login-screen');
+  detenerTimerInactividad();
 }
+
+// ==================== CIERRE DE SESION POR INACTIVIDAD ====================
+// Si no hay actividad del usuario durante este tiempo, se cierra la sesion y
+// vuelve a pedir usuario y contraseña. Ademas, al usar sessionStorage en vez
+// de localStorage, cerrar la pestaña/navegador tambien borra la sesion.
+const INACTIVIDAD_LIMITE_MS = 10 * 60 * 1000;
+let inactividadTimer = null;
+
+function detenerTimerInactividad() {
+  if (inactividadTimer) {
+    clearTimeout(inactividadTimer);
+    inactividadTimer = null;
+  }
+}
+
+function reiniciarTimerInactividad() {
+  if (!token) return;
+  detenerTimerInactividad();
+  inactividadTimer = setTimeout(() => {
+    logout();
+    showToast('Sesión cerrada por inactividad', 'error');
+  }, INACTIVIDAD_LIMITE_MS);
+}
+
+['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt => {
+  document.addEventListener(evt, reiniciarTimerInactividad, { passive: true });
+});
 
 // ==================== ADMIN DASHBOARD ====================
 async function cargarDashboard() {
@@ -316,7 +346,7 @@ async function cargarDashboard() {
 // Menus habilitados para el usuario logueado. null = sin restriccion (sesion
 // iniciada antes de que existiera este control, o el usuario tiene todos).
 function menusDelUsuario() {
-  const menusRaw = localStorage.getItem('userMenus');
+  const menusRaw = sessionStorage.getItem('userMenus');
   return menusRaw !== null ? menusRaw.split(',').map(m => m.trim()).filter(Boolean) : null;
 }
 
@@ -325,7 +355,7 @@ function menusDelUsuario() {
 // los datos de las que si puede ver. Si la pestaña activa por defecto quedo
 // oculta, salta a la primera visible para no dejar la pantalla en blanco.
 function aplicarPermisosUI() {
-  const permiso = localStorage.getItem('userPermiso');
+  const permiso = sessionStorage.getItem('userPermiso');
   const menus = menusDelUsuario();
   const tieneMenu = clave => menus === null || menus.includes(clave);
 
@@ -1733,9 +1763,9 @@ document.addEventListener('DOMContentLoaded', () => {
   llenarSelectAnios('filtro-anio-historial', true);
 
   // Restaurar sesión si existe
-  const savedToken = localStorage.getItem('token');
-  const savedRole = localStorage.getItem('userRole');
-  const savedName = localStorage.getItem('userName');
+  const savedToken = sessionStorage.getItem('token');
+  const savedRole = sessionStorage.getItem('userRole');
+  const savedName = sessionStorage.getItem('userName');
   if (savedToken && savedRole) {
     token = savedToken;
     userRole = savedRole;
@@ -1748,6 +1778,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showScreen('empleado-screen');
       cargarRecibosEmpleado();
     }
+    reiniciarTimerInactividad();
   }
 });
 
@@ -2614,7 +2645,7 @@ function renderUsuarios(usuarios) {
       <td>
         <div class="action-btns">
           <button class="btn btn-outline btn-sm" onclick="editarUsuario(${u.id})">Editar</button>
-          ${(localStorage.getItem('userPermiso') === 'administrativo' && u.permiso === 'supervisor') ? '' : `<button class="btn btn-danger btn-sm" onclick="confirmarEliminarUsuario(${u.id}, '${u.nombre.replace(/'/g, "\\'")}')">Eliminar</button>`}
+          ${(sessionStorage.getItem('userPermiso') === 'administrativo' && u.permiso === 'supervisor') ? '' : `<button class="btn btn-danger btn-sm" onclick="confirmarEliminarUsuario(${u.id}, '${u.nombre.replace(/'/g, "\\'")}')">Eliminar</button>`}
         </div>
       </td>
     </tr>
