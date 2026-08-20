@@ -807,6 +807,14 @@
             <span class="empty-icon">&#128203;</span>
             <p>A&uacute;n no tiene recibos cargados</p>
           </div>
+          <div id="empleado-firma-requerida" class="empty-state hidden">
+            <span class="empty-icon">&#9999;&#65039;</span>
+            <p>Para ver y descargar sus recibos de sueldo primero debe registrar su firma.</p>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" onclick="switchEmpTab('firma'); switchFirmaSubtab('dibujar')">Firmar a mano alzada</button>
+              <button class="btn btn-outline btn-sm" onclick="switchEmpTab('firma'); switchFirmaSubtab('escrita')">Firmar tipeada</button>
+            </div>
+          </div>
           <div class="recibos-grid" id="recibos-empleado"></div>
         </div>
       </div>

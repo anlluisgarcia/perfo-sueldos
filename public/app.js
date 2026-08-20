@@ -2374,6 +2374,7 @@ function switchEmpTab(tab) {
   document.querySelector(`.emp-tab[onclick*="${tab}"]`).classList.add('active');
   document.getElementById(`emp-tab-${tab}`).classList.add('active');
 
+  if (tab === 'recibos') cargarRecibosEmpleado();
   if (tab === 'firma') cargarMiFirma();
   if (tab === 'datos') cargarMisDatos();
 }
@@ -2474,6 +2475,7 @@ async function guardarMiFirma() {
     showToast('Firma guardada exitosamente');
     limpiarFirmaEditor();
     cargarMiFirma();
+    cargarRecibosEmpleado();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -2551,6 +2553,7 @@ async function guardarFirmaEscrita() {
     showToast('Firma escrita guardada exitosamente');
     limpiarFirmaEscrita();
     cargarMiFirma();
+    cargarRecibosEmpleado();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -3018,12 +3021,28 @@ async function guardarMisDatos(e) {
 let recibosEmpleadoCache = [];
 
 async function cargarRecibosEmpleado() {
+  const container = document.getElementById('recibos-empleado');
+  const emptyState = document.getElementById('empleado-sin-recibos');
+  const firmaRequerida = document.getElementById('empleado-firma-requerida');
+
+  try {
+    const firmaRes = await fetch(`${API}/api/empleado/mi-firma`, { headers: headersAuth() });
+    const firmaInfo = await firmaRes.json();
+    if (!firmaInfo.tiene_firma) {
+      container.innerHTML = '';
+      emptyState.classList.add('hidden');
+      firmaRequerida.classList.remove('hidden');
+      return;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  firmaRequerida.classList.add('hidden');
+
   try {
     const res = await fetch(`${API}/api/empleado/recibos`, { headers: headersAuth() });
     const recibos = await res.json();
     recibosEmpleadoCache = recibos;
-    const container = document.getElementById('recibos-empleado');
-    const emptyState = document.getElementById('empleado-sin-recibos');
 
     if (recibos.length === 0) {
       container.innerHTML = '';
