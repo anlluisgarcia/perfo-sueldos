@@ -160,6 +160,33 @@ function headersAuth() {
   return { 'Authorization': `Bearer ${token}` };
 }
 
+// ==================== MAYUSCULAS AUTOMATICAS ====================
+// Todo el texto que se tipea en la app se convierte a MAYUSCULA al vuelo,
+// para mantener los datos consistentes (igual que los catalogos de
+// paises/provincias, que ya se guardan en mayuscula). Se excluyen los
+// campos de usuario/clave (son credenciales, no datos) y el texto de la
+// firma escrita (se muestra como una firma cursiva, no como dato de tabla).
+// Usa delegacion de eventos en document para cubrir tambien los campos que
+// se generan dinamicamente (por ejemplo, la ficha del empleado).
+const CAMPOS_SIN_MAYUSCULA = [
+  '#admin-usuario', '#usr-usuario',
+  '#firma-escrita-input', '#firma-admin-escrita-input', '#firma-emp-escrita-input'
+];
+
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (!el.matches || !el.matches('input[type="text"], input[type="search"], textarea')) return;
+  if (CAMPOS_SIN_MAYUSCULA.some(sel => el.matches(sel))) return;
+  const inicio = el.selectionStart;
+  const fin = el.selectionEnd;
+  const valorMayuscula = el.value.toUpperCase();
+  if (valorMayuscula === el.value) return;
+  el.value = valorMayuscula;
+  if (inicio !== null && fin !== null) {
+    el.setSelectionRange(inicio, fin);
+  }
+});
+
 function formatFecha(fecha) {
   if (!fecha) return '-';
   // Periodos complementarios: 2024-SAC1 / 2024-SAC2
