@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recibos de Sueldos</title>
-  <link rel="stylesheet" href="styles.css?v=20260820b">
+  <link rel="stylesheet" href="styles.css?v=20260820c">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Fuentes decorativas (solo para firmas): se cargan sin bloquear el renderizado de la pagina -->
@@ -114,6 +114,10 @@
               <button class="admin-tab" onclick="switchAdminTab('firmas')">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
                 <span>Firmas</span>
+              </button>
+              <button class="admin-tab" onclick="switchAdminTab('firmasempleados')">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L14 8z"/></svg>
+                <span>Firma Empleados</span>
               </button>
             </div>
           </div>
@@ -422,6 +426,41 @@
                 <button class="btn btn-primary" onclick="guardarFirmaAdminCargada()">Guardar Firma</button>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Firma Empleados -->
+      <div id="tab-firmasempleados" class="tab-content">
+        <div class="card">
+          <div class="section-header">
+            <h2>Firma Empleados</h2>
+          </div>
+          <p class="firma-descripcion">Firma personal (dibujada o escrita) que cada empleado registra desde su portal para poder descargar sus recibos de sueldo. El circulo verde indica que el empleado descargo al menos un recibo alguna vez.</p>
+
+          <div style="display:flex;gap:10px;align-items:center;margin:16px 0;flex-wrap:wrap">
+            <input type="text" id="buscar-firma-empleado" class="filtro-texto" placeholder="Buscar por nombre o DNI..." oninput="filtrarFirmasEmpleados()" style="flex:1;max-width:350px">
+            <select id="filtro-empresa-firmas-empleados" onchange="filtrarFirmasEmpleados()" style="padding:8px 12px;border:1px solid var(--gray-300);border-radius:var(--radius);font-size:0.9rem;">
+              <option value="">Todas las empresas</option>
+              <option value="BTZ MINERA">BTZ MINERA</option>
+              <option value="PERFORACIONES IGLESIANAS">PERFORACIONES IGLESIANAS</option>
+            </select>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>DNI</th>
+                  <th>Empresa</th>
+                  <th>Firma</th>
+                  <th>Descarg&oacute; recibo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-firmas-empleados"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1178,6 +1217,21 @@
     </div>
   </div>
 
+  <!-- MODAL FIRMA DE EMPLEADO -->
+  <div id="modal-firma-emp" class="modal hidden" onclick="if (event.target === this) cerrarModalFirmaEmpleado()">
+    <div class="modal-content">
+      <h3 id="modal-firma-emp-titulo">Firma</h3>
+      <div class="firma-preview-box" style="text-align:center">
+        <img id="modal-firma-emp-img" style="max-width:100%;max-height:220px" alt="Firma del empleado">
+        <p id="modal-firma-emp-sin-firma" class="hidden" style="color:var(--gray-500)">Este empleado todav&iacute;a no registr&oacute; su firma.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="modal-firma-emp-eliminar">Eliminar Firma</button>
+        <button class="btn btn-outline" onclick="cerrarModalFirmaEmpleado()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL CONFIRMACIÓN -->
   <div id="modal-confirm" class="modal hidden">
     <div class="modal-content">
@@ -1316,6 +1370,6 @@
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=20260820b"></script>
+  <script src="app.js?v=20260820c"></script>
 </body>
 </html>

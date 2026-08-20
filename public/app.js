@@ -368,7 +368,8 @@ function aplicarPermisosUI() {
       visible = tieneMenu('empleados') || tieneMenu('fichas');
     } else {
       // "salutacion" es una vista dentro del menu Configuracion: comparte su permiso.
-      const clave = tabKey === 'salutacion' ? 'configuracion' : tabKey;
+      // "firmasempleados" comparte el permiso del menu Firmas.
+      const clave = tabKey === 'salutacion' ? 'configuracion' : tabKey === 'firmasempleados' ? 'firmas' : tabKey;
       const ocultoPorOperador = permiso === 'operador' && (clave === 'usuarios' || clave === 'configuracion');
       visible = !ocultoPorOperador && tieneMenu(clave);
     }
@@ -664,6 +665,7 @@ function switchAdminTab(tab) {
 
   if (tab === 'fichas') cargarFichas();
   if (tab === 'firmas') cargarFirmasAdmin();
+  if (tab === 'firmasempleados') cargarFirmasEmpleados();
   if (tab === 'recibos') cargarSelectEmpleados();
   if (tab === 'historial') cargarHistorialRecibos();
   if (tab === 'usuarios') cargarUsuarios();
@@ -2252,6 +2254,99 @@ function confirmarEliminarFirmaAdmin() {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  };
+}
+
+// ==================== ADMIN - FIRMA EMPLEADOS ====================
+let firmasEmpleadosCache = [];
+
+async function cargarFirmasEmpleados() {
+  try {
+    const res = await fetch(`${API}/api/admin/firmas-empleados`, { headers: headersAuth() });
+    firmasEmpleadosCache = await res.json();
+    renderFirmasEmpleados(firmasEmpleadosCache);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function renderFirmasEmpleados(lista) {
+  const tbody = document.getElementById('tabla-firmas-empleados');
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px">No hay empleados que coincidan</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(e => `
+    <tr>
+      <td><strong>${e.nombre}</strong></td>
+      <td>${e.dni}</td>
+      <td>${e.empresa || '-'}</td>
+      <td>${e.firma_data
+        ? `<img src="${e.firma_data}" alt="Firma" style="max-width:110px;max-height:40px">`
+        : '<span class="badge badge-danger">Sin firma</span>'}</td>
+      <td><span class="firma-circulo ${e.descargas > 0 ? 'firma-si' : 'firma-no'}" title="${e.descargas > 0 ? 'Descargó al menos un recibo' : 'Nunca descargó un recibo'}"></span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editarFirmaEmpleado(${e.id})">Editar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filtrarFirmasEmpleados() {
+  const q = document.getElementById('buscar-firma-empleado').value.toLowerCase().trim();
+  const empresa = document.getElementById('filtro-empresa-firmas-empleados').value;
+  const filtrados = firmasEmpleadosCache.filter(e => {
+    const coincideTexto = e.nombre.toLowerCase().includes(q) || e.dni.includes(q);
+    const coincideEmpresa = !empresa || e.empresa === empresa;
+    return coincideTexto && coincideEmpresa;
+  });
+  renderFirmasEmpleados(filtrados);
+}
+
+function editarFirmaEmpleado(id) {
+  const emp = firmasEmpleadosCache.find(e => e.id === id);
+  if (!emp) return;
+  document.getElementById('modal-firma-emp-titulo').textContent = `Firma de ${emp.nombre}`;
+  const img = document.getElementById('modal-firma-emp-img');
+  const sinFirma = document.getElementById('modal-firma-emp-sin-firma');
+  const btnEliminar = document.getElementById('modal-firma-emp-eliminar');
+  if (emp.firma_data) {
+    img.src = emp.firma_data;
+    img.classList.remove('hidden');
+    sinFirma.classList.add('hidden');
+    btnEliminar.classList.remove('hidden');
+    btnEliminar.onclick = () => confirmarEliminarFirmaEmpleado(id, emp.nombre);
+  } else {
+    img.classList.add('hidden');
+    sinFirma.classList.remove('hidden');
+    btnEliminar.classList.add('hidden');
+  }
+  document.getElementById('modal-firma-emp').classList.remove('hidden');
+}
+
+function cerrarModalFirmaEmpleado() {
+  document.getElementById('modal-firma-emp').classList.add('hidden');
+}
+
+function confirmarEliminarFirmaEmpleado(id, nombre) {
+  document.getElementById('modal-titulo').textContent = 'Eliminar Firma';
+  document.getElementById('modal-mensaje').textContent = `¿Está seguro de eliminar la firma de "${nombre}"? Deberá volver a registrarla para poder descargar sus recibos.`;
+  document.getElementById('modal-confirm').classList.remove('hidden');
+  document.getElementById('modal-confirmar').onclick = async () => {
+    try {
+      const res = await fetch(`${API}/api/admin/firmas-empleados/${id}`, {
+        method: 'DELETE',
+        headers: headersAuth()
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      showToast(result.message);
+      cerrarModalFirmaEmpleado();
+      cargarFirmasEmpleados();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+    cerrarModal();
   };
 }
 

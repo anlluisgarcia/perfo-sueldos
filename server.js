@@ -1401,6 +1401,43 @@ app.delete('/api/admin/firma', authAdmin, requiereMenu('firmas'), async (req, re
   }
 });
 
+// ==================== ADMIN - FIRMA DE CADA EMPLEADO ====================
+app.get('/api/admin/firmas-empleados', authAdmin, requiereMenu('firmas'), async (req, res) => {
+  try {
+    const db = getDb();
+    const result = await db.exec(
+      `SELECT e.id, e.nombre, e.dni, e.empresa, e.estado,
+              fe.firma_data, fe.updated_at AS firma_actualizada,
+              (SELECT COUNT(*) FROM descargas_recibos d WHERE d.empleado_id = e.id) AS descargas
+       FROM empleados e
+       LEFT JOIN firmas_empleados fe ON fe.empleado_id = e.id
+       ORDER BY e.nombre`
+    );
+    if (result.length === 0) return res.json([]);
+    const columns = result[0].columns;
+    const filas = result[0].values.map(row => {
+      const obj = {};
+      columns.forEach((col, i) => obj[col] = row[i]);
+      return obj;
+    });
+    res.json(filas);
+  } catch (err) {
+    console.error('Firmas empleados GET error:', err);
+    res.status(500).json({ error: 'Error al listar firmas de empleados' });
+  }
+});
+
+app.delete('/api/admin/firmas-empleados/:id', authAdmin, requiereMenu('firmas'), async (req, res) => {
+  try {
+    const db = getDb();
+    await db.run('DELETE FROM firmas_empleados WHERE empleado_id = ?', [req.params.id]);
+    res.json({ message: 'Firma del empleado eliminada exitosamente' });
+  } catch (err) {
+    console.error('Firma empleado DELETE error:', err);
+    res.status(500).json({ error: 'Error al eliminar la firma del empleado' });
+  }
+});
+
 // ==================== ADMIN - SALUTACION (tarjetas de cumpleaños) ====================
 
 const SEXOS_SALUTACION = ['MASCULINO', 'FEMENINO'];
