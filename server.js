@@ -928,13 +928,6 @@ app.get('/api/recibo/descargar/:id', async (req, res) => {
       return res.status(404).json({ error: 'Archivo no encontrado' });
     }
     if (decoded.rol === 'empleado') {
-      await db.run(
-        'INSERT INTO descargas_recibos (recibo_id, empleado_id) VALUES (?, ?)',
-        [req.params.id, decoded.id]
-      );
-    }
-
-    if (decoded.rol === 'empleado') {
       let firmaData = null;
       const firmaReciboResult = await db.exec(
         'SELECT firma_data FROM firmas_recibos WHERE recibo_id = ? AND empleado_id = ?',
@@ -956,37 +949,45 @@ app.get('/api/recibo/descargar/:id', async (req, res) => {
         }
       }
 
-      if (firmaData) {
-        try {
-          const pdfBytes = fs.readFileSync(filePath);
-          const pdfDoc = await PDFDocument.load(pdfBytes);
+      if (!firmaData) {
+        return res.status(400).json({ error: 'Debe crear y aplicar su firma antes de descargar el recibo' });
+      }
 
-          const firmaBase64 = firmaData.replace(/^data:image\/png;base64,/, '');
-          const firmaBytes = Buffer.from(firmaBase64, 'base64');
-          const firmaImage = await pdfDoc.embedPng(firmaBytes);
+      await db.run(
+        'INSERT INTO descargas_recibos (recibo_id, empleado_id) VALUES (?, ?)',
+        [req.params.id, decoded.id]
+      );
 
-          const firmaWidth = 150;
-          const firmaHeight = (firmaImage.height / firmaImage.width) * firmaWidth;
+      try {
+        const pdfBytes = fs.readFileSync(filePath);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
 
-          let firmaEmpleadoX = 25 + 227;
-          let firmaEmpleadoY = 171 - 142;
+        const firmaBase64 = firmaData.replace(/^data:image\/png;base64,/, '');
+        const firmaBytes = Buffer.from(firmaBase64, 'base64');
+        const firmaImage = await pdfDoc.embedPng(firmaBytes);
 
-          const pages = pdfDoc.getPages();
-          const lastPage = pages[pages.length - 1];
-          lastPage.drawImage(firmaImage, {
-            x: firmaEmpleadoX,
-            y: firmaEmpleadoY,
-            width: firmaWidth,
-            height: firmaHeight,
-          });
+        const firmaWidth = 150;
+        const firmaHeight = (firmaImage.height / firmaImage.width) * firmaWidth;
 
-          const modifiedPdf = await pdfDoc.save();
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${recibo.archivo_nombre}"`);
-          return res.send(Buffer.from(modifiedPdf));
-        } catch (pdfErr) {
-          console.error('Error al estampar firma en PDF:', pdfErr);
-        }
+        let firmaEmpleadoX = 25 + 227;
+        let firmaEmpleadoY = 171 - 142;
+
+        const pages = pdfDoc.getPages();
+        const lastPage = pages[pages.length - 1];
+        lastPage.drawImage(firmaImage, {
+          x: firmaEmpleadoX,
+          y: firmaEmpleadoY,
+          width: firmaWidth,
+          height: firmaHeight,
+        });
+
+        const modifiedPdf = await pdfDoc.save();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${recibo.archivo_nombre}"`);
+        return res.send(Buffer.from(modifiedPdf));
+      } catch (pdfErr) {
+        console.error('Error al estampar firma en PDF:', pdfErr);
+        return res.status(500).json({ error: 'Error al generar el recibo firmado' });
       }
     }
 
