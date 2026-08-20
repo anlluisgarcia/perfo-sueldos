@@ -164,28 +164,36 @@ function headersAuth() {
 // Todo el texto que se tipea en la app se convierte a MAYUSCULA al vuelo,
 // para mantener los datos consistentes (igual que los catalogos de
 // paises/provincias, que ya se guardan en mayuscula). Se excluyen los
-// campos de usuario/clave (son credenciales, no datos) y el texto de la
-// firma escrita (se muestra como una firma cursiva, no como dato de tabla).
+// campos de usuario/clave (son credenciales, no datos).
+// El unico caso permitido en minuscula es el texto de la Firma Escrita:
+// ahi se aplica Tipo Titulo (primera letra de cada palabra en mayuscula,
+// el resto en minuscula), porque se usa para dibujar una firma cursiva.
 // Usa delegacion de eventos en document para cubrir tambien los campos que
 // se generan dinamicamente (por ejemplo, la ficha del empleado).
-const CAMPOS_SIN_MAYUSCULA = [
-  '#admin-usuario', '#usr-usuario',
-  '#firma-escrita-input', '#firma-admin-escrita-input', '#firma-emp-escrita-input'
-];
+const CAMPOS_SIN_MAYUSCULA = ['#admin-usuario', '#usr-usuario'];
+const CAMPOS_TIPO_TITULO = ['#firma-escrita-input', '#firma-admin-escrita-input', '#firma-emp-escrita-input'];
 
+function aTipoTitulo(texto) {
+  return texto.toLowerCase().replace(/(?:^|\s)\S/g, (c) => c.toUpperCase());
+}
+
+// Se registra en fase de captura para que el valor ya quede transformado
+// antes de que corran los demas manejadores "oninput" del propio campo
+// (por ejemplo, la vista previa de la firma escrita).
 document.addEventListener('input', (e) => {
   const el = e.target;
   if (!el.matches || !el.matches('input[type="text"], input[type="search"], textarea')) return;
   if (CAMPOS_SIN_MAYUSCULA.some(sel => el.matches(sel))) return;
+  const esTipoTitulo = CAMPOS_TIPO_TITULO.some(sel => el.matches(sel));
   const inicio = el.selectionStart;
   const fin = el.selectionEnd;
-  const valorMayuscula = el.value.toUpperCase();
-  if (valorMayuscula === el.value) return;
-  el.value = valorMayuscula;
+  const valorTransformado = esTipoTitulo ? aTipoTitulo(el.value) : el.value.toUpperCase();
+  if (valorTransformado === el.value) return;
+  el.value = valorTransformado;
   if (inicio !== null && fin !== null) {
     el.setSelectionRange(inicio, fin);
   }
-});
+}, true);
 
 function formatFecha(fecha) {
   if (!fecha) return '-';
